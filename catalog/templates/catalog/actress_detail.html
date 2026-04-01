@@ -1,0 +1,640 @@
+{% extends 'catalog/base.html' %}
+
+{% block title %}{{ actress.name }} — ActressDB{% endblock %}
+
+{% block extra_styles %}
+
+/* ── Back link ──────────────────────────────────────────────────────── */
+.back-link {
+  display: inline-flex; align-items: center; gap: .45rem;
+  font-size: .75rem; font-weight: 500;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-dim); margin-bottom: 2.5rem;
+  transition: color var(--transition);
+}
+.back-link:hover { color: var(--gold); }
+.back-link:hover svg { transform: translateX(-3px); }
+.back-link svg { transition: transform var(--transition); }
+
+/* ── Hero layout ────────────────────────────────────────────────────── */
+.detail-hero {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 3rem;
+  margin-bottom: 3.5rem;
+  align-items: start;
+}
+@media (max-width: 780px) { .detail-hero { grid-template-columns: 1fr; gap: 2rem; } }
+
+/* ── Featured photo ─────────────────────────────────────────────────── */
+.detail-photo-wrap { position: sticky; top: 80px; }
+@media (max-width: 780px) { .detail-photo-wrap { position: static; } }
+
+.detail-photo {
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+}
+.detail-photo img { width: 100%; height: 100%; object-fit: cover; }
+.detail-photo-empty {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-serif); font-style: italic;
+  font-size: 5rem; font-weight: 300; color: var(--border);
+}
+
+/* ── Bio ────────────────────────────────────────────────────────────── */
+.detail-name {
+  font-family: var(--font-serif);
+  font-size: clamp(2.2rem, 5vw, 3.8rem);
+  font-weight: 300; line-height: 1.1;
+  margin-bottom: 1.75rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: .75rem; margin-bottom: 2rem;
+}
+
+.stat-box {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .9rem 1rem;
+}
+.stat-label {
+  font-size: .65rem; font-weight: 500;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--text-dim); margin-bottom: .3rem;
+}
+.stat-value {
+  font-family: var(--font-serif);
+  font-size: 1.2rem; font-weight: 400;
+  color: var(--text); line-height: 1.2;
+}
+
+.notes-block {
+  background: var(--bg-3);
+  border-left: 2px solid var(--gold-dim);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 1rem 1.25rem; margin-bottom: 2rem;
+  font-size: .9rem; color: var(--text-mid); line-height: 1.7;
+}
+
+.website-link {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-size: .78rem; font-weight: 500;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--gold); border: 1px solid var(--gold-dim);
+  border-radius: var(--radius); padding: .5rem 1rem;
+  transition: background var(--transition);
+}
+.website-link:hover { background: rgba(200,164,90,.12); }
+
+/* ── Section rule ───────────────────────────────────────────────────── */
+.section { margin-bottom: 3rem; }
+
+.section-rule {
+  display: flex; align-items: center; gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.section-rule-label {
+  font-size: .68rem; font-weight: 500;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--text-dim); white-space: nowrap;
+}
+.section-rule-line { flex: 1; height: 1px; background: var(--border); }
+
+/* ── Photo grid ─────────────────────────────────────────────────────── */
+.photo-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: .75rem;
+}
+
+/*
+  Each photo card has an overlay that appears on hover.
+  The overlay contains two buttons: "Set as profile" and "Delete".
+  Position: relative on the card + absolute on the overlay makes this work.
+*/
+.photo-item {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  transition: border-color 240ms ease;
+}
+
+/* Gold ring on the featured photo */
+.photo-item.is-featured {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold);
+}
+
+.photo-item img {
+  width: 100%; height: 100%; object-fit: cover;
+  display: block;
+}
+
+/* Overlay: hidden by default, slides up on hover */
+.photo-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.72);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: .5rem;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  padding: .75rem;
+}
+.photo-item:hover .photo-overlay { opacity: 1; }
+
+/* Featured badge — always visible on the featured photo */
+.featured-badge {
+  position: absolute; top: .5rem; left: .5rem;
+  background: var(--gold);
+  color: #0e0e10;
+  font-size: .6rem; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase;
+  padding: .2rem .5rem;
+  border-radius: 999px;
+  pointer-events: none;   /* don't block the hover overlay */
+}
+
+/* Buttons inside the overlay */
+.photo-btn {
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: .72rem; font-weight: 500;
+  letter-spacing: .07em; text-transform: uppercase;
+  padding: .45rem .75rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-align: center;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.photo-btn-feature {
+  background: rgba(200,164,90,.18);
+  border-color: rgba(200,164,90,.4);
+  color: var(--gold);
+}
+.photo-btn-feature:hover { background: rgba(200,164,90,.3); }
+
+.photo-btn-delete {
+  background: rgba(196,107,107,.15);
+  border-color: rgba(196,107,107,.35);
+  color: #c46b6b;
+}
+.photo-btn-delete:hover { background: rgba(196,107,107,.28); }
+
+/* ── Upload area ────────────────────────────────────────────────────── */
+/*
+  The upload area is an <label> wrapping a hidden <input type="file">.
+  Clicking anywhere on the label opens the file picker.
+  When files are dragged over, JS adds the .dragover class.
+*/
+.upload-area {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 200ms ease, background 200ms ease;
+  display: block;     /* makes the <label> fill its container */
+}
+.upload-area:hover,
+.upload-area.dragover {
+  border-color: var(--gold-dim);
+  background: rgba(200,164,90,.04);
+}
+
+.upload-area input[type="file"] {
+  /* Hidden — the label acts as the click target */
+  display: none;
+}
+
+.upload-icon {
+  font-size: 2rem; line-height: 1;
+  margin-bottom: .75rem;
+  color: var(--text-dim);
+  display: block;
+}
+
+.upload-text {
+  font-size: .85rem; color: var(--text-dim); line-height: 1.6;
+}
+.upload-text strong { color: var(--text-mid); }
+
+/* Preview thumbnails shown before the form is submitted */
+.upload-preview {
+  display: flex; flex-wrap: wrap; gap: .5rem;
+  margin-top: 1rem;
+}
+.upload-preview img {
+  width: 72px; height: 72px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.upload-submit-row {
+  display: flex; align-items: center; gap: 1rem;
+  margin-top: 1rem;
+}
+.upload-count { font-size: .8rem; color: var(--text-dim); }
+
+/* ── Movies & scenes (unchanged from before) ────────────────────────── */
+.movies-list { display: flex; flex-direction: column; gap: .5rem; }
+
+.movie-item {
+  display: flex; align-items: center; gap: 1rem;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .8rem 1.1rem;
+  transition: border-color var(--transition);
+}
+.movie-item:hover { border-color: #3a3a42; }
+
+.movie-year {
+  font-family: var(--font-serif); font-size: .95rem;
+  font-style: italic; color: var(--gold); min-width: 3rem;
+}
+.movie-title { font-size: .9rem; font-weight: 400; color: var(--text); }
+
+.scene-card {
+  background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.25rem;
+  margin-bottom: .75rem; transition: border-color var(--transition);
+}
+.scene-card:hover { border-color: #3a3a42; }
+.scene-movie {
+  font-size: .7rem; font-weight: 500;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--gold); margin-bottom: .5rem;
+}
+.scene-desc { font-size: .9rem; color: var(--text-mid); line-height: 1.65; }
+.scene-link {
+  display: inline-flex; align-items: center; gap: .3rem;
+  margin-top: .75rem; font-size: .75rem; color: var(--text-dim);
+  border-bottom: 1px solid var(--border); padding-bottom: 1px;
+  transition: color var(--transition), border-color var(--transition);
+}
+.scene-link:hover { color: var(--gold); border-color: var(--gold-dim); }
+
+/* ── Lightbox ───────────────────────────────────────────────────────── */
+.lightbox {
+  display: none; position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,.92);
+  align-items: center; justify-content: center;
+}
+.lightbox.open { display: flex; }
+.lightbox img { max-width: 90vw; max-height: 90vh; border-radius: var(--radius); object-fit: contain; }
+.lightbox-close {
+  position: absolute; top: 1.5rem; right: 1.5rem;
+  color: var(--text-dim); font-size: 1.5rem; cursor: pointer;
+  transition: color var(--transition);
+}
+.lightbox-close:hover { color: var(--text); }
+
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Back link ──────────────────────────────────────────────────────────── -->
+<a href="{% url 'actress_list' %}" class="back-link">
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+    <path d="M9 2L4 7l5 5"/>
+  </svg>
+  Collection
+</a>
+
+<!-- ── Hero ──────────────────────────────────────────────────────────────── -->
+<div class="detail-hero">
+
+  <!-- Featured photo (left column) -->
+  <div class="detail-photo-wrap">
+    <div class="detail-photo">
+      {% if featured_photo %}
+        <img src="{{ featured_photo.image.url }}" alt="{{ actress.name }}">
+      {% else %}
+        <div class="detail-photo-empty">{{ actress.name|slice:":1" }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Bio (right column) -->
+  <div>
+    <h1 class="detail-name">{{ actress.name }}</h1>
+
+    <div class="stats-grid">
+      {% if actress.birth_country %}
+      <div class="stat-box">
+        <div class="stat-label">Country</div>
+        <div class="stat-value">{{ actress.birth_country }}</div>
+      </div>
+      {% endif %}
+
+      {% if actress.date_of_birth %}
+      <div class="stat-box">
+        <div class="stat-label">Born</div>
+        <div class="stat-value">{{ actress.date_of_birth|date:"N j, Y" }}</div>
+      </div>
+      {% endif %}
+
+      {% if actress.height_cm %}
+      <div class="stat-box">
+        <div class="stat-label">Height</div>
+        <div class="stat-value">{{ actress.height_cm }} cm</div>
+      </div>
+      {% endif %}
+
+      {% if actress.weight_kg %}
+      <div class="stat-box">
+        <div class="stat-label">Weight</div>
+        <div class="stat-value">{{ actress.weight_kg }} kg</div>
+      </div>
+      {% endif %}
+
+      {% if actress.years_active_start %}
+      <div class="stat-box">
+        <div class="stat-label">Active</div>
+        <div class="stat-value">
+          {{ actress.years_active_start }}{% if actress.years_active_end %} – {{ actress.years_active_end }}{% else %} – now{% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="stat-box">
+        <div class="stat-label">Movies</div>
+        <div class="stat-value">{{ actress.movies.count }}</div>
+      </div>
+    </div>
+
+    {% if actress.notes %}
+    <div class="notes-block">{{ actress.notes }}</div>
+    {% endif %}
+
+    {% if actress.official_website %}
+    <a href="{{ actress.official_website }}" target="_blank" rel="noopener" class="website-link">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <path d="M5 2H2a1 1 0 00-1 1v8a1 1 0 001 1h8a1 1 0 001-1V8M8 1h4m0 0v4m0-4L5.5 7.5"/>
+      </svg>
+      Official website
+    </a>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- ── Photo management ───────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-rule">
+    <span class="section-rule-label">
+      Photos
+      {% with actress.photos.count as n %}
+        {% if n %}<span style="color:var(--text-dim);font-weight:300;letter-spacing:0;text-transform:none;font-size:.85em;margin-left:.3rem;">({{ n }})</span>{% endif %}
+      {% endwith %}
+    </span>
+    <span class="section-rule-line"></span>
+  </div>
+
+  <!-- Existing photos grid -->
+  {% with actress.photos.all as photos %}
+  {% if photos %}
+  <div class="photo-gallery" style="margin-bottom:2rem;">
+    {% for photo in photos %}
+    <div class="photo-item {% if photo.is_featured %}is-featured{% endif %}">
+
+      <!-- The photo itself (click = open lightbox) -->
+      <img
+        src="{{ photo.image.url }}"
+        alt="{{ photo.caption|default:actress.name }}"
+        style="cursor:zoom-in;"
+        onclick="openLightbox('{{ photo.image.url }}')"
+      >
+
+      <!-- Gold "Profile" badge — only shown on the featured photo -->
+      {% if photo.is_featured %}
+        <span class="featured-badge">Profile</span>
+      {% endif %}
+
+      <!-- Hover overlay with action buttons -->
+      <div class="photo-overlay">
+
+        <!-- "Set as profile" — only shown on non-featured photos -->
+        {% if not photo.is_featured %}
+        <form method="post" action="{% url 'set_featured_photo' photo.id %}">
+          {% csrf_token %}
+          {#
+            csrf_token is a security token Django requires on every form that
+            changes data. Without it Django will reject the request with a 403.
+          #}
+          <button type="submit" class="photo-btn photo-btn-feature">
+            ★ Set as profile
+          </button>
+        </form>
+        {% else %}
+        <span class="photo-btn photo-btn-feature" style="opacity:.45;cursor:default;">
+          ★ Current profile
+        </span>
+        {% endif %}
+
+        <!-- Delete button — asks for confirmation before submitting -->
+        <form
+          method="post"
+          action="{% url 'delete_photo' photo.id %}"
+          onsubmit="return confirm('Delete this photo? This cannot be undone.')"
+        >
+          {% csrf_token %}
+          <button type="submit" class="photo-btn photo-btn-delete">
+            ✕ Delete
+          </button>
+        </form>
+
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <!-- Upload form -->
+  <!--
+    enctype="multipart/form-data" is REQUIRED for any form that uploads files.
+    Without it, Django receives the filenames but not the actual file data.
+  -->
+  <form
+    method="post"
+    action="{% url 'upload_photos' actress.id %}"
+    enctype="multipart/form-data"
+    id="uploadForm"
+  >
+    {% csrf_token %}
+
+    <!--
+      The <label> wraps the hidden <input> so clicking anywhere on the
+      dashed box opens the file picker. "for" must match the input's "id".
+    -->
+    <label for="photoInput" class="upload-area" id="uploadArea">
+      <span class="upload-icon">⊕</span>
+      <div class="upload-text">
+        <strong>Click to choose photos</strong>, or drag &amp; drop them here<br>
+        <span style="font-size:.8rem;">Select multiple files at once — JPG, PNG, WebP</span>
+      </div>
+
+      <!--
+        multiple: lets the user select more than one file
+        accept:   hints to the OS file picker to show only image files
+        name="photos": must match request.FILES.getlist('photos') in views.py
+      -->
+      <input
+        type="file"
+        id="photoInput"
+        name="photos"
+        multiple
+        accept="image/*"
+      >
+    </label>
+
+    <!-- Preview row — filled by JavaScript as soon as files are chosen -->
+    <div class="upload-preview" id="uploadPreview"></div>
+
+    <!-- Submit button row — hidden until at least one file is chosen -->
+    <div class="upload-submit-row" id="uploadSubmitRow" style="display:none;">
+      <button type="submit" class="btn btn-primary">Upload photos</button>
+      <span class="upload-count" id="uploadCount"></span>
+    </div>
+
+  </form>
+</div>
+
+<!-- ── Movies ─────────────────────────────────────────────────────────────── -->
+{% with actress.movies.all as movies %}
+{% if movies %}
+<div class="section">
+  <div class="section-rule">
+    <span class="section-rule-label">Movies</span>
+    <span class="section-rule-line"></span>
+  </div>
+  <div class="movies-list">
+    {% for movie in movies %}
+    <div class="movie-item">
+      <span class="movie-year">{% if movie.release_year %}{{ movie.release_year }}{% else %}—{% endif %}</span>
+      <span class="movie-title">{{ movie.title }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endwith %}
+
+<!-- ── Favourite scenes ───────────────────────────────────────────────────── -->
+{% with actress.favorite_scenes.all as scenes %}
+{% if scenes %}
+<div class="section">
+  <div class="section-rule">
+    <span class="section-rule-label">Favourite Scenes</span>
+    <span class="section-rule-line"></span>
+  </div>
+  {% for scene in scenes %}
+  <div class="scene-card">
+    {% if scene.movie %}
+      <div class="scene-movie">{{ scene.movie.title }}</div>
+    {% endif %}
+    <div class="scene-desc">{{ scene.description }}</div>
+    {% if scene.scene_link %}
+      <a href="{{ scene.scene_link }}" target="_blank" rel="noopener" class="scene-link">
+        Watch scene ↗
+      </a>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<!-- ── Lightbox ───────────────────────────────────────────────────────────── -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <span class="lightbox-close">✕</span>
+  <img src="" id="lightboxImg" alt="" onclick="event.stopPropagation()">
+</div>
+
+<script>
+  // ── Lightbox ──────────────────────────────────────────────────────────────
+  function openLightbox(src) {
+    document.getElementById('lightboxImg').src = src;
+    document.getElementById('lightbox').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeLightbox();
+  });
+
+  // ── Upload: file preview + drag & drop ────────────────────────────────────
+  const input       = document.getElementById('photoInput');
+  const area        = document.getElementById('uploadArea');
+  const preview     = document.getElementById('uploadPreview');
+  const submitRow   = document.getElementById('uploadSubmitRow');
+  const countLabel  = document.getElementById('uploadCount');
+
+  // When the user picks files via the file picker
+  input.addEventListener('change', () => showPreviews(input.files));
+
+  // Drag & drop — add visual feedback while files are hovering over the area
+  area.addEventListener('dragover', e => {
+    e.preventDefault();                    // allow drop
+    area.classList.add('dragover');
+  });
+  area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+
+  // When files are actually dropped
+  area.addEventListener('drop', e => {
+    e.preventDefault();
+    area.classList.remove('dragover');
+
+    // Assign the dropped files to the input so the form submits them
+    // DataTransfer.files is read-only, so we use a DataTransfer object trick
+    const dt   = new DataTransfer();
+    [...e.dataTransfer.files].forEach(f => dt.items.add(f));
+    input.files = dt.files;
+    showPreviews(input.files);
+  });
+
+  function showPreviews(files) {
+    preview.innerHTML = '';            // clear any previous previews
+
+    if (!files || files.length === 0) {
+      submitRow.style.display = 'none';
+      return;
+    }
+
+    // Show a small thumbnail for each chosen file
+    [...files].forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        preview.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Show the submit button and a "3 photos selected" label
+    submitRow.style.display = 'flex';
+    countLabel.textContent  = `${files.length} photo${files.length > 1 ? 's' : ''} selected`;
+  }
+</script>
+
+{% endblock %}

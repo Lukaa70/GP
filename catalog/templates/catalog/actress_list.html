@@ -1,0 +1,429 @@
+{% extends 'catalog/base.html' %}
+
+{% block title %}Collection — ActressDB{% endblock %}
+
+{% block extra_styles %}
+
+/* ── Filter panel ───────────────────────────────────────────────────── */
+.filter-panel {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.filter-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto auto auto;
+  gap: 1rem;
+  align-items: end;
+}
+
+@media (max-width: 1000px) {
+  .filter-row { grid-template-columns: 1fr 1fr 1fr; }
+  .filter-actions { grid-column: 1 / -1; display: flex; gap: .75rem; }
+}
+@media (max-width: 600px) {
+  .filter-row { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 400px) {
+  .filter-row { grid-template-columns: 1fr; }
+}
+
+.filter-actions { display: flex; gap: .75rem; }
+
+.chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: .35rem;
+  background: rgba(200, 164, 90, .10);
+  border: 1px solid rgba(200, 164, 90, .28);
+  color: var(--gold);
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .06em;
+  padding: .25rem .8rem;
+}
+
+/* ── Charts row ─────────────────────────────────────────────────────── */
+.charts-row {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1.5fr;
+  gap: 1.25rem;
+  margin-bottom: 3rem;
+}
+@media (max-width: 900px)  { .charts-row { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 580px)  { .charts-row { grid-template-columns: 1fr; } }
+
+.chart-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.chart-label {
+  font-size: .68rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 1rem;
+}
+
+/* ── Section header ─────────────────────────────────────────────────── */
+.section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 1.75rem;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1rem;
+}
+
+.section-title {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 300;
+  font-style: italic;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+}
+
+.count-badge { font-size: .78rem; color: var(--text-dim); }
+
+/* ── Actress grid ───────────────────────────────────────────────────── */
+.actress-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+}
+@media (max-width: 1100px) { .actress-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 680px)  { .actress-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 420px)  { .actress-grid { grid-template-columns: 1fr; } }
+
+.actress-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: block;
+  transition: transform 280ms ease, border-color 280ms ease, box-shadow 280ms ease;
+}
+
+.actress-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--gold-dim);
+  box-shadow: 0 16px 48px rgba(0,0,0,.55), 0 0 0 1px rgba(200,164,90,.08);
+}
+
+.actress-card-photo {
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  background: var(--bg-3);
+  position: relative;
+}
+
+.actress-card-photo img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform 500ms ease;
+}
+
+.actress-card:hover .actress-card-photo img { transform: scale(1.05); }
+
+.actress-card-photo-empty {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-serif);
+  font-size: 3.5rem;
+  font-style: italic;
+  font-weight: 300;
+  color: var(--border);
+  user-select: none;
+}
+
+.actress-card-body { padding: 1rem 1.1rem 1.25rem; }
+
+.actress-card-name {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 400;
+  line-height: 1.3;
+  color: var(--text);
+  margin-bottom: .35rem;
+  transition: color var(--transition);
+}
+
+.actress-card:hover .actress-card-name { color: var(--gold); }
+
+.actress-card-meta {
+  font-size: .75rem;
+  color: var(--text-dim);
+  display: flex; align-items: center; gap: .45rem;
+}
+
+.meta-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+
+/* ── Empty state ────────────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 5rem 2rem;
+}
+
+.empty-icon {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 4rem;
+  color: var(--border);
+  display: block;
+  margin-bottom: 1rem;
+  line-height: 1;
+}
+
+{% endblock %}
+
+{% block content %}
+
+<!-- Page heading -->
+<div style="margin-bottom:2.5rem;">
+  <h1>Collection</h1>
+  <p style="margin-top:.5rem;color:var(--text-dim);font-size:.9rem;">
+    Your personal archive of favourite actresses
+  </p>
+</div>
+
+<!-- ── Filter panel ──────────────────────────────────────────────────────── -->
+<div class="filter-panel">
+  <form method="get">
+    <div class="filter-row">
+
+      <div>
+        <label class="form-label">Name</label>
+        <input type="text" name="name" value="{{ filter_name }}"
+               placeholder="Search…" class="form-control">
+      </div>
+
+      <div>
+        <label class="form-label">Country</label>
+        <input type="text" name="country" value="{{ filter_country }}"
+               placeholder="e.g. USA, Japan" class="form-control">
+      </div>
+
+      <div>
+        <label class="form-label">Birth decade</label>
+        <select name="decade" class="form-select">
+          <option value="">Any decade</option>
+          {% for d in decade_choices %}
+            <option value="{{ d }}" {% if filter_decade == d|stringformat:"s" %}selected{% endif %}>
+              {{ d }}s
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">Min height</label>
+        <input type="number" name="height_min" value="{{ filter_height_min }}"
+               min="140" max="200" placeholder="cm" class="form-control" style="width:88px;">
+      </div>
+
+      <div>
+        <label class="form-label">Max height</label>
+        <input type="number" name="height_max" value="{{ filter_height_max }}"
+               min="140" max="200" placeholder="cm" class="form-control" style="width:88px;">
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <a href="{% url 'actress_list' %}" class="btn btn-ghost">Reset</a>
+      </div>
+
+    </div>
+  </form>
+
+  {% if filter_name or filter_country or filter_decade or filter_height_min or filter_height_max %}
+  <div class="chips">
+    {% if filter_name %}<span class="chip">Name · {{ filter_name }}</span>{% endif %}
+    {% if filter_country %}<span class="chip">Country · {{ filter_country }}</span>{% endif %}
+    {% if filter_decade %}<span class="chip">{{ filter_decade }}s</span>{% endif %}
+    {% if filter_height_min %}<span class="chip">≥ {{ filter_height_min }} cm</span>{% endif %}
+    {% if filter_height_max %}<span class="chip">≤ {{ filter_height_max }} cm</span>{% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<!-- ── Charts ────────────────────────────────────────────────────────────── -->
+<div class="charts-row">
+  <div class="chart-card">
+    <div class="chart-label">By Country</div>
+    <canvas id="chartCountry" height="160"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-label">By Birth Decade</div>
+    <canvas id="chartDecade" height="160"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-label">Height (cm)</div>
+    <canvas id="chartHeight" height="160"></canvas>
+  </div>
+</div>
+
+<!-- ── Actress grid ──────────────────────────────────────────────────────── -->
+<div class="section-header">
+  <span class="section-title">Actresses</span>
+  <span class="count-badge">{{ actresses|length }} result{% if actresses|length != 1 %}s{% endif %}</span>
+</div>
+
+{% if actresses %}
+  <div class="actress-grid">
+    {% for actress in actresses %}
+      <a href="{% url 'actress_detail' actress.id %}" class="actress-card">
+        <div class="actress-card-photo">
+          {% with actress.photos.all as photos %}
+            {% if photos %}
+              <img src="{{ photos.0.image.url }}" alt="{{ actress.name }}">
+            {% else %}
+              <div class="actress-card-photo-empty">{{ actress.name|slice:":1" }}</div>
+            {% endif %}
+          {% endwith %}
+        </div>
+        <div class="actress-card-body">
+          <div class="actress-card-name">{{ actress.name }}</div>
+          <div class="actress-card-meta">
+            <span>{{ actress.birth_country }}</span>
+            {% if actress.height_cm %}
+              <span class="meta-dot"></span>
+              <span>{{ actress.height_cm }} cm</span>
+            {% endif %}
+            {% if actress.date_of_birth %}
+              <span class="meta-dot"></span>
+              <span>b. {{ actress.date_of_birth.year }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+
+{% else %}
+  <div class="empty-state">
+    <span class="empty-icon">∅</span>
+    <p style="color:var(--text-dim);">No actresses match the current filters.</p>
+  </div>
+{% endif %}
+
+<!-- ── Charts JS ─────────────────────────────────────────────────────────── -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  const GOLD    = '#c8a45a';
+  const TEXT_DIM = '#7a7870';
+  const TEXT_MID = '#aea99f';
+
+  const PALETTE = [
+    '#c8a45a','#a07840','#c46b6b','#6b9ec4','#6bc47a',
+    '#a46bc4','#c4a46b','#6bc4c4','#c46ba0','#9ec46b',
+  ];
+
+  const tooltipDefaults = {
+    backgroundColor: '#1c1c1f',
+    borderColor: '#2a2a2e',
+    borderWidth: 1,
+    titleColor: GOLD,
+    bodyColor: TEXT_MID,
+    padding: 10,
+    cornerRadius: 6,
+    titleFont: { family: "'Outfit'", size: 12 },
+    bodyFont:  { family: "'Outfit'", size: 12 },
+  };
+
+  const axisDefaults = {
+    x: {
+      ticks: { color: TEXT_DIM, font: { family: "'Outfit'", size: 11 } },
+      grid:  { color: '#1a1a1e' },
+    },
+    y: {
+      ticks: { color: TEXT_DIM, font: { family: "'Outfit'", size: 11 }, stepSize: 1 },
+      grid:  { color: '#1a1a1e' },
+      beginAtZero: true,
+    }
+  };
+
+  /* Country bar */
+  new Chart(document.getElementById('chartCountry'), {
+    type: 'bar',
+    data: {
+      labels: JSON.parse('{{ chart_country_labels|escapejs }}'),
+      datasets: [{
+        data: JSON.parse('{{ chart_country_counts|escapejs }}'),
+        backgroundColor: ctx => PALETTE[ctx.dataIndex % PALETTE.length],
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false }, tooltip: tooltipDefaults },
+      scales: axisDefaults,
+    }
+  });
+
+  /* Decade bar */
+  new Chart(document.getElementById('chartDecade'), {
+    type: 'bar',
+    data: {
+      labels: JSON.parse('{{ chart_decade_labels|escapejs }}'),
+      datasets: [{
+        data: JSON.parse('{{ chart_decade_counts|escapejs }}'),
+        backgroundColor: GOLD,
+        hoverBackgroundColor: '#d4b06a',
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false }, tooltip: tooltipDefaults },
+      scales: axisDefaults,
+    }
+  });
+
+  /* Height doughnut */
+  new Chart(document.getElementById('chartHeight'), {
+    type: 'doughnut',
+    data: {
+      labels: JSON.parse('{{ chart_height_labels|escapejs }}'),
+      datasets: [{
+        data: JSON.parse('{{ chart_height_counts|escapejs }}'),
+        backgroundColor: PALETTE,
+        borderWidth: 0,
+        hoverOffset: 8,
+      }]
+    },
+    options: {
+      maintainAspectRatio: true,
+      cutout: '66%',
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            color: TEXT_DIM,
+            font: { family: "'Outfit'", size: 10 },
+            padding: 8, boxWidth: 10, boxHeight: 10,
+          }
+        },
+        tooltip: tooltipDefaults,
+      }
+    }
+  });
+
+});
+</script>
+
+{% endblock %}
