@@ -14,6 +14,7 @@ from .models import (
     ScrapingTask,
     StagedActress,
     StagedPhoto,
+    Tag,
 )
 from .scrapers.iafd import get_actress_data, scrape_profile_by_url
 from .scrapers.pornpics import (
@@ -1218,6 +1219,8 @@ def actress_list(request):
     name       = request.GET.get('name', '').strip()
     sort       = request.GET.get('sort', 'name')
     min_rating = request.GET.get('min_rating', '')
+    tag       = request.GET.get('tag', '').strip()
+    hd_only   = request.GET.get('hd_only', '').strip()
 
     if name:
         actresses = actresses.filter(name__icontains=name)
@@ -1247,6 +1250,10 @@ def actress_list(request):
             actresses = actresses.filter(rating__gte=int(min_rating))
         except ValueError:
             pass
+    if tag:
+        actresses = actresses.filter(tags__name__icontains=tag)
+    if hd_only.lower() == 'true':
+        actresses = actresses.filter(photos__is_hd=True).distinct()
 
     sort_map = {
         'name':       'name',
@@ -1257,8 +1264,8 @@ def actress_list(request):
     }
     actresses = actresses.order_by(sort_map.get(sort, 'name'))
 
-    # Pagination — 24 per page
-    paginator = Paginator(actresses, 24)
+    # Pagination — 20 per page
+    paginator = Paginator(actresses, 20)
     page_num  = request.GET.get('page', 1)
     page_obj  = paginator.get_page(page_num)
 
@@ -1271,6 +1278,9 @@ def actress_list(request):
     decade_labels, decade_counts = _decade_distribution()
     height_labels, height_counts = _height_distribution()
 
+    # Get all tags for filter dropdown
+    all_tags = Tag.objects.all()
+
     context = {
         'actresses':               page_obj,
         'page_obj':                page_obj,
@@ -1281,8 +1291,11 @@ def actress_list(request):
         'filter_height_min':       height_min,
         'filter_height_max':       height_max,
         'filter_min_rating':       min_rating,
+        'filter_tag':            tag,
+        'filter_hd_only':        hd_only,
         'sort':                    sort,
         'decade_choices':          DECADE_CHOICES,
+        'all_tags':               all_tags,
         'chart_nationality_labels': json.dumps([s['nationality'] for s in nationality_stats]),
         'chart_nationality_counts': json.dumps([s['count']       for s in nationality_stats]),
         'chart_decade_labels':     json.dumps(decade_labels),
@@ -1293,10 +1306,40 @@ def actress_list(request):
     return render(request, 'catalog/actress_list.html', context)
 
 
+# ── Comparison view ────────────────────────────────────────────────────────────
+
+def compare_actresses(request):
+    """Compare two actresses side by side."""
+    id1 = request.GET.get('id1', '')
+    id2 = request.GET.get('id2', '')
+
+    actress1 = Actress.objects.get(id=id1) if id1 else None
+    actress2 = Actress.objects.get(id=id2) if id2 else None
+
+    return render(request, 'catalog/compare.html', {
+        'actress1': actress1,
+        'actress2': actress2,
+    })
+
+
 # ── Detail view ───────────────────────────────────────────────────────────────
 
 def actress_detail(request, id):
     actress = get_object_or_404(Actress, id=id)
+
+    # API for hover preview (first 3 photos)
+    if request.GET.get('preview') == 'json':
+        photos = list(actress.photos.all()[:3].values('id', 'image', 'thumbnail', 'width', 'height'))
+        return JsonResponse({
+            'photos': [
+                {
+                    'url': request.build_absolute_uri(p['image']),
+                    'thumbnail': request.build_absolute_uri(p['thumbnail']) if p['thumbnail'] else None,
+                    'width': p['width'],
+                    'height': p['height'],
+                } for p in photos
+            ]
+        })
 
     featured_photo = (
         actress.photos.filter(is_featured=True).first()
@@ -1325,6 +1368,27 @@ def _get_image_dimensions(image_file):
         return None, None
 
 
+def _generate_thumbnail(image_file, max_size=300):
+    """Generate a thumbnail and return the PIL Image, or None on failure."""
+    try:
+        from PIL import Image as PILImage
+        image_file.seek(0)
+        img = PILImage.open(image_file)
+        img.verify()
+        image_file.seek(0)
+        img = PILImage.open(image_file)
+        
+        # Convert to RGB if necessary
+        if img.mode not in ('RGB', 'L'):
+            img = img.convert('RGB')
+        
+        # Resize maintaining aspect ratio
+        img.thumbnail((max_size, max_size), PILImage.LANCZOS)
+        return img
+    except Exception:
+        return None
+
+
 # ── Photo: upload ─────────────────────────────────────────────────────────────
 
 @require_POST
@@ -1333,9 +1397,18 @@ def upload_photos(request, id):
     files   = request.FILES.getlist('photos')
 
     for f in files:
-        w, h  = _get_image_dimensions(f)
-        photo = Photo(actress=actress, width=w, height=h)
+        w, h = _get_image_dimensions(f)
+        photo = Photo(actress=actress, width=w, height=h, is_hd=(w is not None and w >= 1280))
         photo.image.save(f.name, f, save=True)
+        
+        # Generate thumbnail
+        thumb_img = _generate_thumbnail(f, 300)
+        if thumb_img:
+            from io import BytesIO
+            thumb_buffer = BytesIO()
+            thumb_img.save(thumb_buffer, format='JPEG', quality=85)
+            thumb_buffer.seek(0)
+            photo.thumbnail.save(f'{f.name.rsplit(".", 1)[0]}_thumb.jpg', thumb_buffer, save=True)
 
     return redirect('actress_detail', id=id)
 

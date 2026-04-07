@@ -3,7 +3,8 @@ from . import views
 
 urlpatterns = [
     # Actress list + detail
-    path('actresses/',          views.actress_list,   name='actress_list'),
+    path('actresses/', views.actress_list, name='actress_list'),
+    path('actresses/compare/', views.compare_actresses, name='compare_actresses'),
     path('actresses/<int:id>/', views.actress_detail, name='actress_detail'),
 
     # Manual photo upload / management

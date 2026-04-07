@@ -1,0 +1,336 @@
+{% extends 'catalog/index.html' %}
+
+{% block title %}Compare — ActressDB{% endblock %}
+
+{% block extra_styles %}
+.compare-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+.compare-header {
+  margin-bottom: 2rem;
+}
+.compare-header h1 {
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  font-weight: 300;
+  margin-bottom: .5rem;
+}
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+}
+@media (max-width: 900px) {
+  .compare-grid { grid-template-columns: 1fr; gap: 2rem; }
+}
+.compare-col {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+}
+.compare-empty {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-dim);
+}
+.compare-empty-icon {
+  font-size: 4rem;
+  font-family: var(--font-serif);
+  font-style: italic;
+  color: var(--border);
+  display: block;
+  margin-bottom: 1rem;
+}
+.compare-photo {
+  aspect-ratio: 2/3;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  margin-bottom: 2rem;
+}
+.compare-photo img { width: 100%; height: 100%; object-fit: cover; }
+.compare-name {
+  font-family: var(--font-serif);
+  font-size: 1.8rem;
+  font-weight: 300;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+.compare-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: .75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.compare-stat:last-child { border-bottom: none; }
+.compare-stat-label {
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.compare-stat-value {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  color: var(--text);
+}
+.compare-rating {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+.compare-rating-stars {
+  font-size: 1.5rem;
+}
+.compare-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  justify-content: center;
+  margin-top: .5rem;
+}
+.compare-tag {
+  background: rgba(200,164,90,.12);
+  border: 1px solid rgba(200,164,90,.28);
+  color: var(--gold);
+  font-size: .7rem;
+  padding: .25rem .6rem;
+  border-radius: 999px;
+}
+.compare-social {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.compare-social a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: .75rem;
+  color: var(--text-mid);
+  transition: all var(--transition);
+}
+.compare-social a:hover {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+}
+.no-compare {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-dim);
+}
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  color: var(--text-dim);
+  font-size: .8rem;
+  margin-bottom: 2rem;
+  transition: color var(--transition);
+}
+.back-btn:hover { color: var(--gold); }
+{% endblock %}
+
+{% block content %}
+<div class="compare-page">
+  <a href="{% url 'actress_list' %}" class="back-btn">
+    ← Back to Collection
+  </a>
+
+  <div class="compare-header">
+    <h1>Compare Actresses</h1>
+  </div>
+
+  {% if not actress1 and not actress2 %}
+    <div class="compare-empty">
+      <span class="compare-empty-icon">≠</span>
+      <p>No actresses selected for comparison.</p>
+      <p style="margin-top:.5rem;">Go to the collection page and select 2 actresses to compare.</p>
+    </div>
+  {% else %}
+    <div class="compare-grid">
+      <!-- Actress 1 -->
+      <div class="compare-col">
+        {% if actress1 %}
+          {% with actress1.featured_photo as photo %}
+          <div class="compare-photo">
+            {% if photo %}<img src="{{ photo.thumbnail.url|default:photo.image.url }}" alt="{{ actress1.name }}">{% endif %}
+          </div>
+          {% endwith %}
+          <div class="compare-name">{{ actress1.name }}</div>
+
+          {% if actress1.rating %}
+          <div class="compare-rating">
+            <div class="compare-rating-stars">
+              {% for i in "12345" %}<span style="color:{% if forloop.counter <= actress1.rating %}var(--gold){% else %}var(--border){% endif %}">★</span>{% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="compare-stat">
+            <span class="compare-stat-label">Country</span>
+            <span class="compare-stat-value">{{ actress1.birth_country }}</span>
+          </div>
+          {% if actress1.nationality %}
+          <div class="compare-stat">
+            <span class="compare-stat-label">Nationality</span>
+            <span class="compare-stat-value">{{ actress1.nationality }}</span>
+          </div>
+          {% endif %}
+          {% if actress1.date_of_birth %}
+          <div class="compare-stat">
+            <span class="compare-stat-label">Born</span>
+            <span class="compare-stat-value">{{ actress1.date_of_birth }}</span>
+          </div>
+          {% endif %}
+          {% if actress1.height_cm %}
+          <div class="compare-stat">
+            <span class="compare-stat-label">Height</span>
+            <span class="compare-stat-value">{{ actress1.height_cm }} cm</span>
+          </div>
+          {% endif %}
+          {% if actress1.weight_kg %}
+          <div class="compare-stat">
+            <span class="compare-stat-label">Weight</span>
+            <span class="compare-stat-value">{{ actress1.weight_kg }} kg</span>
+          </div>
+          {% endif %}
+          {% if actress1.years_active_start %}
+          <div class="compare-stat">
+            <span class="compare-stat-label">Active</span>
+            <span class="compare-stat-value">{{ actress1.years_active_start }} – {% if actress1.years_active_end %}{{ actress1.years_active_end }}{% else %}present{% endif %}</span>
+          </div>
+          {% endif %}
+          <div class="compare-stat">
+            <span class="compare-stat-label">Photos</span>
+            <span class="compare-stat-value">{{ actress1.photos.count }}</span>
+          </div>
+          <div class="compare-stat">
+            <span class="compare-stat-label">Scenes</span>
+            <span class="compare-stat-value">{{ actress1.favorite_scenes.count }}</span>
+          </div>
+
+          {% if actress1.tags.all %}
+          <div style="margin-top:1rem;">
+            <span class="compare-stat-label">Tags</span>
+            <div class="compare-tags">
+              {% for tag in actress1.tags.all %}
+                <span class="compare-tag">{{ tag.name }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          {% if actress1.onlyfans_url or actress1.twitter_url or actress1.instagram_url %}
+          <div class="compare-social">
+            {% if actress1.onlyfans_url %}<a href="{{ actress1.onlyfans_url }}" target="_blank">OF</a>{% endif %}
+            {% if actress1.twitter_url %}<a href="{{ actress1.twitter_url }}" target="_blank">𝕏</a>{% endif %}
+            {% if actress1.instagram_url %}<a href="{{ actress1.instagram_url }}" target="_blank">IG</a>{% endif %}
+          </div>
+          {% endif %}
+        {% else %}
+          <div class="compare-empty">
+            <span class="compare-empty-icon">?</span>
+            <p>Select an actress</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Actress 2 -->
+      <div class="compare-col">
+        {% if actress2 %}
+          {% with actress2.featured_photo as photo %}
+          <div class="compare-photo">
+            {% if photo %}<img src="{{ photo.thumbnail.url|default:photo.image.url }}" alt="{{ actress2.name }}">{% endif %}
+          </div>
+          {% endwith %}
+          <div class="compare-name">{{ actress2.name }}</div>
+
+          {% if actress2.rating %}
+          <div class="compare-rating">
+            <div class="compare-rating-stars">
+              {% for i in "12345" %}<span style="color:{% if forloop.counter <= actress2.rating %}var(--gold){% else %}var(--border){% endif %}">★</span>{% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="compare-stat">
+            <span class="compare-stat-label">Country</span>
+            <span class="compare-stat-value">{{ actress2.birth_country }}</span>
+          </div>
+          {% if actress2.nationality %}
+          <div class="compare-stat">
+            <span class="compare-stat-label">Nationality</span>
+            <span class="compare-stat-value">{{ actress2.nationality }}</span>
+          </div>
+          {% endif %}
+          {% if actress2.date_of_birth %}
+          <div class="compare-stat">
+            <span class="compare-stat-label">Born</span>
+            <span class="compare-stat-value">{{ actress2.date_of_birth }}</span>
+          </div>
+          {% endif %}
+          {% if actress2.height_cm %}
+          <div class="compare-stat">
+            <span class="compare-stat-label">Height</span>
+            <span class="compare-stat-value">{{ actress2.height_cm }} cm</span>
+          </div>
+          {% endif %}
+          {% if actress2.weight_kg %}
+          <div class="compare-stat">
+            <span class="compare-stat-label">Weight</span>
+            <span class="compare-stat-value">{{ actress2.weight_kg }} kg</span>
+          </div>
+          {% endif %}
+          {% if actress2.years_active_start %}
+          <div class="compare-stat">
+            <span class="compare-stat-label">Active</span>
+            <span class="compare-stat-value">{{ actress2.years_active_start }} – {% if actress2.years_active_end %}{{ actress2.years_active_end }}{% else %}present{% endif %}</span>
+          </div>
+          {% endif %}
+          <div class="compare-stat">
+            <span class="compare-stat-label">Photos</span>
+            <span class="compare-stat-value">{{ actress2.photos.count }}</span>
+          </div>
+          <div class="compare-stat">
+            <span class="compare-stat-label">Scenes</span>
+            <span class="compare-stat-value">{{ actress2.favorite_scenes.count }}</span>
+          </div>
+
+          {% if actress2.tags.all %}
+          <div style="margin-top:1rem;">
+            <span class="compare-stat-label">Tags</span>
+            <div class="compare-tags">
+              {% for tag in actress2.tags.all %}
+                <span class="compare-tag">{{ tag.name }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          {% if actress2.onlyfans_url or actress2.twitter_url or actress2.instagram_url %}
+          <div class="compare-social">
+            {% if actress2.onlyfans_url %}<a href="{{ actress2.onlyfans_url }}" target="_blank">OF</a>{% endif %}
+            {% if actress2.twitter_url %}<a href="{{ actress2.twitter_url }}" target="_blank">𝕏</a>{% endif %}
+            {% if actress2.instagram_url %}<a href="{{ actress2.instagram_url }}" target="_blank">IG</a>{% endif %}
+          </div>
+          {% endif %}
+        {% else %}
+          <div class="compare-empty">
+            <span class="compare-empty-icon">?</span>
+            <p>Select an actress</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

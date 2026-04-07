@@ -227,6 +227,18 @@
       </div>
 
       <div>
+        <label class="form-label">Tag</label>
+        <select name="tag" class="form-select">
+          <option value="">Any tag</option>
+          {% for t in all_tags %}
+            <option value="{{ t.name }}" {% if filter_tag == t.name %}selected{% endif %}>
+              {{ t.name }}{% if t.category %} ({{ t.category }}){% endif %}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
         <label class="form-label">Birth decade</label>
         <select name="decade" class="form-select">
           <option value="">Any decade</option>
@@ -239,15 +251,22 @@
       </div>
 
       <div>
-        <label class="form-label">Min height</label>
-        <input type="number" name="height_min" value="{{ filter_height_min }}"
-               min="140" max="200" placeholder="cm" class="form-control" style="width:88px;">
+        <label class="form-label">Min rating</label>
+        <select name="min_rating" class="form-select">
+          <option value="">Any</option>
+          <option value="1" {% if filter_min_rating == "1" %}selected{% endif %}>★+</option>
+          <option value="2" {% if filter_min_rating == "2" %}selected{% endif %}>★★+</option>
+          <option value="3" {% if filter_min_rating == "3" %}selected{% endif %}>★★★+</option>
+          <option value="4" {% if filter_min_rating == "4" %}selected{% endif %}>★★★★+</option>
+        </select>
       </div>
 
-      <div>
-        <label class="form-label">Max height</label>
-        <input type="number" name="height_max" value="{{ filter_height_max }}"
-               min="140" max="200" placeholder="cm" class="form-control" style="width:88px;">
+      <div style="display:flex;flex-direction:column;gap:.35rem;">
+        <label style="display:flex;align-items:center;gap:.45rem;cursor:pointer;font-size:.8rem;color:var(--text-mid);">
+          <input type="checkbox" name="hd_only" value="true" {% if filter_hd_only == "true" %}checked{% endif %}
+                 style="accent-color:var(--gold);width:1rem;height:1rem;">
+          HD only
+        </label>
       </div>
 
       <div class="filter-actions">
@@ -258,13 +277,16 @@
     </div>
   </form>
 
-  {% if filter_name or filter_country or filter_decade or filter_height_min or filter_height_max %}
+  {% if filter_name or filter_country or filter_decade or filter_height_min or filter_height_max or filter_tag or filter_min_rating or filter_hd_only %}
   <div class="chips">
     {% if filter_name %}<span class="chip">Name · {{ filter_name }}</span>{% endif %}
     {% if filter_country %}<span class="chip">Country · {{ filter_country }}</span>{% endif %}
+    {% if filter_tag %}<span class="chip">Tag · {{ filter_tag }}</span>{% endif %}
     {% if filter_decade %}<span class="chip">{{ filter_decade }}s</span>{% endif %}
+    {% if filter_min_rating %}<span class="chip">Rating ≥ {{ filter_min_rating }}</span>{% endif %}
     {% if filter_height_min %}<span class="chip">≥ {{ filter_height_min }} cm</span>{% endif %}
     {% if filter_height_max %}<span class="chip">≤ {{ filter_height_max }} cm</span>{% endif %}
+    {% if filter_hd_only == "true" %}<span class="chip">HD only</span>{% endif %}
   </div>
   {% endif %}
 </div>
@@ -310,12 +332,31 @@
 </div>
 
 {% if actresses %}
+  <!-- Compare bar -->
+  <div id="compareBar" style="display:none;position:sticky;bottom:1rem;background:var(--bg-2);
+       border:1px solid var(--gold);border-radius:var(--radius-lg);padding:1rem 1.5rem;
+       margin-bottom:2rem;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:100;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+      <span style="color:var(--gold);font-size:.85rem;font-weight:500;">
+        <span id="compareCount">0</span>/2 selected
+      </span>
+      <div style="display:flex;gap:.75rem;">
+        <button onclick="clearCompare()" class="btn btn-ghost" style="font-size:.75rem;">Clear</button>
+        <button onclick="goCompare()" class="btn btn-primary" style="font-size:.75rem;">Compare</button>
+      </div>
+    </div>
+  </div>
+
   <div class="actress-grid">
     {% for actress in actresses %}
-      <a href="{% url 'actress_detail' actress.id %}" class="actress-card"
-         data-actress-id="{{ actress.id }}"
-         onmouseenter="showPreview(this, {{ actress.id }})"
-         onmouseleave="hidePreview()">
+      <div class="actress-card-wrapper" style="position:relative;">
+        <input type="checkbox" class="compare-cb"
+               style="position:absolute;top:.5rem;left:.5rem;z-index:10;width:1.25rem;height:1.25rem;cursor:pointer;accent-color:var(--gold);"
+               onclick="toggleCompare(this, {{ actress.id }}, '{{ actress.name|escapejs }}')">
+        <a href="{% url 'actress_detail' actress.id %}" class="actress-card"
+           data-actress-id="{{ actress.id }}"
+           onmouseenter="showPreview(this, {{ actress.id }})"
+           onmouseleave="hidePreview()">
         <div class="actress-card-photo">
           {% with actress.featured_photo as photo %}
             {% if photo %}
@@ -611,6 +652,47 @@ function renderRecentlyViewed() {
 }
 
 renderRecentlyViewed();
+
+// ── Comparison selection ─────────────────────────────────────────────────────
+let _compareIds = [];
+
+function toggleCompare(cb, id, name) {
+  if (cb.checked) {
+    if (_compareIds.length >= 2) {
+      cb.checked = false;
+      alert('You can only compare 2 actresses at a time.');
+      return;
+    }
+    _compareIds.push(id);
+  } else {
+    _compareIds = _compareIds.filter(x => x !== id);
+  }
+  updateCompareBar();
+}
+
+function updateCompareBar() {
+  const bar = document.getElementById('compareBar');
+  const cnt = document.getElementById('compareCount');
+  cnt.textContent = _compareIds.length;
+  bar.style.display = _compareIds.length ? 'flex' : 'none';
+}
+
+function clearCompare() {
+  _compareIds = [];
+  document.querySelectorAll('.compare-cb').forEach(cb => cb.checked = false);
+  updateCompareBar();
+}
+
+function goCompare() {
+  if (_compareIds.length !== 2) {
+    alert('Please select exactly 2 actresses to compare.');
+    return;
+  }
+  const url = `{% url 'compare_actresses' %}?id1=${_compareIds[0]}&id2=${_compareIds[1]}`;
+  window.location.href = url;
+}
+
+// Store recently viewed on detail page visit (handled by detail page)
 </script>
 
 {% endblock %}

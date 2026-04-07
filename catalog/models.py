@@ -2,6 +2,19 @@ from django.db import models
 from django.utils import timezone
 
 
+# ── Tags for actresses (studios, genres, etc.) ────────────────────────────────
+
+class Tag(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    category = models.CharField(max_length=50, blank=True)  # studio, genre, etc.
+
+    class Meta:
+        ordering = ['category', 'name']
+
+    def __str__(self):
+        return f"{self.category}: {self.name}" if self.category else self.name
+
+
 class Actress(models.Model):
     name               = models.CharField(max_length=200)
     date_of_birth      = models.DateField(null=True, blank=True)
@@ -21,6 +34,9 @@ class Actress(models.Model):
     onlyfans_url  = models.URLField(blank=True)
     twitter_url   = models.URLField(blank=True)
     instagram_url = models.URLField(blank=True)
+
+    # Tags (studios, genres, etc.)
+    tags = models.ManyToManyField(Tag, related_name="actresses", blank=True)
 
     class Meta:
         ordering = ['name']
@@ -65,6 +81,7 @@ class FavoriteScene(models.Model):
 class Photo(models.Model):
     actress         = models.ForeignKey(Actress, on_delete=models.CASCADE, related_name="photos")
     image           = models.ImageField(upload_to="actresses/")
+    thumbnail      = models.ImageField(upload_to="actresses/thumbnails/", null=True, blank=True)
     caption         = models.CharField(max_length=200, blank=True)
     is_featured     = models.BooleanField(default=False)
     source_url_1280 = models.URLField(max_length=500, blank=True)

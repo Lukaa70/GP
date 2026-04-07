@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Actress, Movie, FavoriteScene, Photo, StagedActress, StagedPhoto, ScrapingTask
+from .models import Actress, Movie, FavoriteScene, Photo, StagedActress, StagedPhoto, ScrapingTask, Tag
 
 
 class PhotoInline(admin.TabularInline):
@@ -29,6 +29,7 @@ class ActressAdmin(admin.ModelAdmin):
         (None, {'fields': ('name', 'rating')}),
         ('Biography', {'fields': ('date_of_birth', 'birth_country', 'nationality', 'height_cm', 'weight_kg', 'years_active_start', 'years_active_end')}),
         ('Online', {'fields': ('official_website', 'onlyfans_url', 'twitter_url', 'instagram_url')}),
+        ('Tags', {'fields': ('tags',)}),
         ('Notes', {'fields': ('notes',)}),
     )
 
@@ -100,3 +101,10 @@ class ScrapingTaskAdmin(admin.ModelAdmin):
         ('Result', {'fields': ('error',)}),
         ('Timestamps', {'fields': ('created_at', 'updated_at', 'finished_at')}),
     )
+
+
+@admin.register(Tag)
+class TagAdmin(admin.ModelAdmin):
+    list_display = ['name', 'category']
+    list_filter = ['category']
+    search_fields = ['name']
