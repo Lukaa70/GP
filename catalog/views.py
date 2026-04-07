@@ -4,6 +4,7 @@ import hashlib
 from django.core.files.base import ContentFile
 from django.core.paginator import Paginator
 from django.db import connection as db_conn
+from django.db.models import Count
 from django.views.decorators.http import require_POST
 
 from .models import (
