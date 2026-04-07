@@ -1,15 +1,25 @@
+import json
 import os
 import hashlib
-import requests
-from django.shortcuts import render, get_object_or_404, redirect
-from django.views.decorators.http import require_POST
-from django.db.models import Count
 from django.core.files.base import ContentFile
-from .models import Actress, Photo, StagedActress, StagedPhoto, FavoriteScene, ScrapingTask
-import json
-from django.http import HttpResponse
+from django.core.paginator import Paginator
+from django.db import connection as db_conn
+from django.views.decorators.http import require_POST
+
+from .models import (
+    Actress,
+    FavoriteScene,
+    Photo,
+    ScrapingTask,
+    StagedActress,
+    StagedPhoto,
+)
 from .scrapers.iafd import get_actress_data, scrape_profile_by_url
-from .scrapers.pornpics import scrape_actress_photos, get_gallery_urls, scrape_gallery_photos
+from .scrapers.pornpics import (
+    get_gallery_urls,
+    scrape_actress_photos,
+    scrape_gallery_photos,
+)
 
 
 # ── Scraper test (single name via URL) ───────────────────────────────────────
@@ -831,6 +841,9 @@ def add_scene(request, actress_id):
 
     try:
         rating = int(rating_raw) if rating_raw else None
+        # Enforce rating range 1-5
+        if rating is not None and (rating < 1 or rating > 5):
+            rating = None
     except ValueError:
         rating = None
 
@@ -1210,17 +1223,29 @@ def actress_list(request):
     if country:
         actresses = actresses.filter(birth_country__icontains=country)
     if decade:
-        start_year = int(decade)
-        actresses  = actresses.filter(
-            date_of_birth__year__gte=start_year,
-            date_of_birth__year__lte=start_year + 9,
-        )
+        try:
+            start_year = int(decade)
+            actresses = actresses.filter(
+                date_of_birth__year__gte=start_year,
+                date_of_birth__year__lte=start_year + 9,
+            )
+        except ValueError:
+            pass
     if height_min:
-        actresses = actresses.filter(height_cm__gte=int(height_min))
+        try:
+            actresses = actresses.filter(height_cm__gte=int(height_min))
+        except ValueError:
+            pass
     if height_max:
-        actresses = actresses.filter(height_cm__lte=int(height_max))
+        try:
+            actresses = actresses.filter(height_cm__lte=int(height_max))
+        except ValueError:
+            pass
     if min_rating:
-        actresses = actresses.filter(rating__gte=int(min_rating))
+        try:
+            actresses = actresses.filter(rating__gte=int(min_rating))
+        except ValueError:
+            pass
 
     sort_map = {
         'name':       'name',

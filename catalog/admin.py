@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Actress, Movie, FavoriteScene, Photo, StagedActress, StagedPhoto
+from .models import Actress, Movie, FavoriteScene, Photo, StagedActress, StagedPhoto, ScrapingTask
 
 
 class PhotoInline(admin.TabularInline):
@@ -87,3 +87,16 @@ class PhotoAdmin(admin.ModelAdmin):
             return f"{obj.width}×{obj.height}"
         return '—'
     dimensions.short_description = 'Size'
+
+
+@admin.register(ScrapingTask)
+class ScrapingTaskAdmin(admin.ModelAdmin):
+    list_display = ['task_type', 'status', 'actress', 'label', 'progress', 'total', 'pct', 'created_at']
+    list_filter = ['status', 'task_type']
+    readonly_fields = ['pct', 'created_at', 'updated_at']
+    fieldsets = (
+        (None, {'fields': ('task_type', 'status', 'actress', 'label')}),
+        ('Progress', {'fields': ('progress', 'total', 'pct', 'message')}),
+        ('Result', {'fields': ('error',)}),
+        ('Timestamps', {'fields': ('created_at', 'updated_at', 'finished_at')}),
+    )
