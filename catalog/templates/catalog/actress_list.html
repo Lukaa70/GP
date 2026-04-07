@@ -190,11 +190,23 @@
 {% block content %}
 
 <!-- Page heading -->
-<div style="margin-bottom:2.5rem;">
-  <h1>Collection</h1>
-  <p style="margin-top:.5rem;color:var(--text-dim);font-size:.9rem;">
-    Your personal archive of favourite actresses
-  </p>
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2rem;gap:1rem;flex-wrap:wrap;">
+  <div>
+    <h1>Collection</h1>
+    <p style="margin-top:.5rem;color:var(--text-dim);font-size:.9rem;">
+      Your personal archive of favourite actresses
+    </p>
+  </div>
+  <a href="{% url 'export_backup' %}" class="btn btn-ghost" style="font-size:.75rem;flex-shrink:0;"
+     title="Download ZIP with all actress data + photos">
+    ↓ Export backup
+  </a>
+</div>
+
+<!-- Recently viewed strip (hidden by JS if empty) -->
+<div id="recentlyViewed" style="display:none;margin-bottom:2rem;">
+  <div style="font-size:.68rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.85rem;">Recently viewed</div>
+  <div id="rvStrip" style="display:flex;gap:1rem;overflow-x:auto;padding-bottom:.25rem;scrollbar-width:none;"></div>
 </div>
 
 <!-- ── Filter panel ──────────────────────────────────────────────────────── -->
@@ -260,8 +272,8 @@
 <!-- ── Charts ────────────────────────────────────────────────────────────── -->
 <div class="charts-row">
   <div class="chart-card">
-    <div class="chart-label">By Country</div>
-    <canvas id="chartCountry" height="160"></canvas>
+    <div class="chart-label">By Nationality</div>
+    <canvas id="chartNationality" height="160"></canvas>
   </div>
   <div class="chart-card">
     <div class="chart-label">By Birth Decade</div>
@@ -276,17 +288,38 @@
 <!-- ── Actress grid ──────────────────────────────────────────────────────── -->
 <div class="section-header">
   <span class="section-title">Actresses</span>
-  <span class="count-badge">{{ actresses|length }} result{% if actresses|length != 1 %}s{% endif %}</span>
+  <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+    <span class="count-badge">{{ page_obj.paginator.count }} actress{{ page_obj.paginator.count|pluralize:"es" }}</span>
+    <select onchange="applySort(this.value)"
+            style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--radius);
+                   color:var(--text-dim);font-family:var(--font-sans);font-size:.72rem;padding:.3rem .6rem;outline:none;">
+      <option value="name"   {% if sort == 'name' %}selected{% endif %}>A–Z</option>
+      <option value="rating" {% if sort == 'rating' %}selected{% endif %}>Top rated</option>
+      <option value="added"  {% if sort == 'added' %}selected{% endif %}>Recently added</option>
+      <option value="height" {% if sort == 'height' %}selected{% endif %}>Tallest</option>
+    </select>
+    <select onchange="applyMinRating(this.value)"
+            style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--radius);
+                   color:var(--text-dim);font-family:var(--font-sans);font-size:.72rem;padding:.3rem .6rem;outline:none;">
+      <option value="" {% if not filter_min_rating %}selected{% endif %}>All ratings</option>
+      <option value="5" {% if filter_min_rating == '5' %}selected{% endif %}>★★★★★ only</option>
+      <option value="4" {% if filter_min_rating == '4' %}selected{% endif %}>★★★★+ </option>
+      <option value="3" {% if filter_min_rating == '3' %}selected{% endif %}>★★★+</option>
+    </select>
+  </div>
 </div>
 
 {% if actresses %}
   <div class="actress-grid">
     {% for actress in actresses %}
-      <a href="{% url 'actress_detail' actress.id %}" class="actress-card">
+      <a href="{% url 'actress_detail' actress.id %}" class="actress-card"
+         data-actress-id="{{ actress.id }}"
+         onmouseenter="showPreview(this, {{ actress.id }})"
+         onmouseleave="hidePreview()">
         <div class="actress-card-photo">
-          {% with actress.photos.all as photos %}
-            {% if photos %}
-              <img src="{{ photos.0.image.url }}" alt="{{ actress.name }}">
+          {% with actress.featured_photo as photo %}
+            {% if photo %}
+              <img src="{{ photo.image.url }}" alt="{{ actress.name }}" loading="lazy">
             {% else %}
               <div class="actress-card-photo-empty">{{ actress.name|slice:":1" }}</div>
             {% endif %}
@@ -305,10 +338,48 @@
               <span>b. {{ actress.date_of_birth.year }}</span>
             {% endif %}
           </div>
+          {% if actress.rating %}
+          <div class="card-stars" style="margin-top:.35rem;">
+            {% for i in "12345" %}
+              <span style="color:{% if forloop.counter <= actress.rating %}var(--gold){% else %}var(--border){% endif %};font-size:.75rem;">★</span>
+            {% endfor %}
+          </div>
+          {% endif %}
         </div>
       </a>
     {% endfor %}
   </div>
+
+  <!-- Hover preview popup -->
+  <div id="hoverPreview" style="display:none;position:fixed;z-index:500;background:var(--bg-2);
+    border:1px solid var(--border);border-radius:var(--radius-lg);padding:.5rem;
+    box-shadow:0 16px 48px rgba(0,0,0,.6);pointer-events:none;">
+    <div id="hoverPreviewInner" style="display:flex;gap:.4rem;"></div>
+  </div>
+
+  <!-- Pagination -->
+  {% if page_obj.paginator.num_pages > 1 %}
+  <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:3rem;flex-wrap:wrap;">
+    {% if page_obj.has_previous %}
+      <a href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}"
+         class="btn btn-ghost" style="font-size:.75rem;padding:.4rem .9rem;">← Prev</a>
+    {% endif %}
+
+    {% for num in page_obj.paginator.page_range %}
+      {% if page_obj.number == num %}
+        <span style="background:var(--gold);color:#0e0e10;font-size:.75rem;padding:.4rem .8rem;border-radius:var(--radius);font-weight:500;">{{ num }}</span>
+      {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <a href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ num }}"
+           style="color:var(--text-dim);font-size:.75rem;padding:.4rem .8rem;border-radius:var(--radius);border:1px solid var(--border);">{{ num }}</a>
+      {% endif %}
+    {% endfor %}
+
+    {% if page_obj.has_next %}
+      <a href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}"
+         class="btn btn-ghost" style="font-size:.75rem;padding:.4rem .9rem;">Next →</a>
+    {% endif %}
+  </div>
+  {% endif %}
 
 {% else %}
   <div class="empty-state">
@@ -354,13 +425,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   };
 
+  /* ── Click-to-filter helper ─────────────────────────────────────────── */
+  function buildUrl(params) {
+    const u = new URLSearchParams(params);
+    return '/actresses/?' + u.toString();
+  }
+
   /* Country bar */
-  new Chart(document.getElementById('chartCountry'), {
+  const nationalityLabels = JSON.parse('{{ chart_nationality_labels|escapejs }}');
+  new Chart(document.getElementById('chartNationality'), {
     type: 'bar',
     data: {
-      labels: JSON.parse('{{ chart_country_labels|escapejs }}'),
+      labels: nationalityLabels,
       datasets: [{
-        data: JSON.parse('{{ chart_country_counts|escapejs }}'),
+        data: JSON.parse('{{ chart_nationality_counts|escapejs }}'),
         backgroundColor: ctx => PALETTE[ctx.dataIndex % PALETTE.length],
         borderRadius: 4,
         borderSkipped: false,
@@ -370,14 +448,20 @@ document.addEventListener('DOMContentLoaded', function () {
       maintainAspectRatio: true,
       plugins: { legend: { display: false }, tooltip: tooltipDefaults },
       scales: axisDefaults,
+      onClick(e, elements) {
+        if (!elements.length) return;
+        const label = nationalityLabels[elements[0].index];
+        if (label) window.location = buildUrl({ country: label });
+      },
     }
   });
 
   /* Decade bar */
+  const decadeLabels = JSON.parse('{{ chart_decade_labels|escapejs }}');
   new Chart(document.getElementById('chartDecade'), {
     type: 'bar',
     data: {
-      labels: JSON.parse('{{ chart_decade_labels|escapejs }}'),
+      labels: decadeLabels,
       datasets: [{
         data: JSON.parse('{{ chart_decade_counts|escapejs }}'),
         backgroundColor: GOLD,
@@ -390,14 +474,30 @@ document.addEventListener('DOMContentLoaded', function () {
       maintainAspectRatio: true,
       plugins: { legend: { display: false }, tooltip: tooltipDefaults },
       scales: axisDefaults,
+      onClick(e, elements) {
+        if (!elements.length) return;
+        // label is e.g. "1990s" — strip the "s" to get the decade start year
+        const raw = decadeLabels[elements[0].index];
+        const year = raw.replace('s', '');
+        if (year) window.location = buildUrl({ decade: year });
+      },
     }
   });
 
-  /* Height doughnut */
+  /* Height doughnut — map label → height_min / height_max */
+  const heightLabels = JSON.parse('{{ chart_height_labels|escapejs }}');
+  const heightRanges = {
+    '<155':    { height_max: 154 },
+    '155–159': { height_min: 155, height_max: 159 },
+    '160–164': { height_min: 160, height_max: 164 },
+    '165–169': { height_min: 165, height_max: 169 },
+    '170–174': { height_min: 170, height_max: 174 },
+    '175+':    { height_min: 175 },
+  };
   new Chart(document.getElementById('chartHeight'), {
     type: 'doughnut',
     data: {
-      labels: JSON.parse('{{ chart_height_labels|escapejs }}'),
+      labels: heightLabels,
       datasets: [{
         data: JSON.parse('{{ chart_height_counts|escapejs }}'),
         backgroundColor: PALETTE,
@@ -419,11 +519,98 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         },
         tooltip: tooltipDefaults,
-      }
+      },
+      onClick(e, elements) {
+        if (!elements.length) return;
+        const label = heightLabels[elements[0].index];
+        const range = heightRanges[label];
+        if (range) window.location = buildUrl(range);
+      },
     }
   });
 
 });
+</script>
+
+<script>
+// ── Sort / filter helpers ─────────────────────────────────────────────────────
+function applySort(val) {
+  const u = new URL(window.location); u.searchParams.set('sort', val); u.searchParams.delete('page'); window.location = u;
+}
+function applyMinRating(val) {
+  const u = new URL(window.location);
+  if (val) u.searchParams.set('min_rating', val); else u.searchParams.delete('min_rating');
+  u.searchParams.delete('page'); window.location = u;
+}
+
+// ── Hover photo preview ───────────────────────────────────────────────────────
+let _previewTimer = null;
+const _previewCache = {};
+
+async function showPreview(card, actressId) {
+  clearTimeout(_previewTimer);
+  _previewTimer = setTimeout(async () => {
+    if (!_previewCache[actressId]) {
+      // Fetch first 3 photo URLs from API (we use the actress detail page thumbnails already in DOM)
+      const imgs = card.querySelectorAll('img');
+      if (!imgs.length) return;
+      _previewCache[actressId] = [imgs[0].src];  // start with featured photo
+    }
+    const popup  = document.getElementById('hoverPreview');
+    const inner  = document.getElementById('hoverPreviewInner');
+    inner.innerHTML = '';
+    _previewCache[actressId].forEach(src => {
+      const img = document.createElement('img');
+      img.src   = src;
+      img.style.cssText = 'height:120px;width:auto;object-fit:cover;border-radius:4px;';
+      inner.appendChild(img);
+    });
+    const rect = card.getBoundingClientRect();
+    popup.style.left    = rect.left + 'px';
+    popup.style.top     = (rect.bottom + 8) + 'px';
+    popup.style.display = 'block';
+  }, 350);
+}
+
+function hidePreview() {
+  clearTimeout(_previewTimer);
+  document.getElementById('hoverPreview').style.display = 'none';
+}
+
+// ── Recently viewed (localStorage) ───────────────────────────────────────────
+const RV_KEY = 'actressdb_recently_viewed';
+
+function _getRV() {
+  try { return JSON.parse(localStorage.getItem(RV_KEY)) || []; } catch { return []; }
+}
+
+function renderRecentlyViewed() {
+  const rv      = _getRV();
+  const section = document.getElementById('recentlyViewed');
+  if (!section || !rv.length) return;
+  section.style.display = 'block';
+  const strip = document.getElementById('rvStrip');
+  strip.innerHTML = '';
+  rv.slice(0, 5).forEach(item => {
+    const a = document.createElement('a');
+    a.href  = item.url;
+    a.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:.4rem;text-decoration:none;width:80px;flex-shrink:0;';
+    const img = document.createElement('div');
+    img.style.cssText = 'width:64px;height:64px;border-radius:50%;overflow:hidden;background:var(--bg-3);border:2px solid var(--border);flex-shrink:0;';
+    if (item.photo) {
+      img.innerHTML = `<img src="${item.photo}" style="width:100%;height:100%;object-fit:cover;">`;
+    } else {
+      img.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:var(--font-serif);font-size:1.4rem;color:var(--border);">${item.name[0]}</div>`;
+    }
+    const name = document.createElement('span');
+    name.textContent  = item.name;
+    name.style.cssText = 'font-size:.65rem;color:var(--text-dim);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;';
+    a.appendChild(img); a.appendChild(name);
+    strip.appendChild(a);
+  });
+}
+
+renderRecentlyViewed();
 </script>
 
 {% endblock %}

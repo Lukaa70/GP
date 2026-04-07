@@ -110,24 +110,38 @@
 
 /* ── Photo grid ─────────────────────────────────────────────────────── */
 .photo-gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: .75rem;
+  columns: 4 160px;
+  column-gap: .75rem;
 }
 
-/*
-  Each photo card has an overlay that appears on hover.
-  The overlay contains two buttons: "Set as profile" and "Delete".
-  Position: relative on the card + absolute on the overlay makes this work.
-*/
+@media (max-width: 900px) { .photo-gallery { columns: 3 140px; } }
+@media (max-width: 580px) { .photo-gallery { columns: 2 130px; } }
+
 .photo-item {
   position: relative;
-  aspect-ratio: 3 / 4;
   border-radius: var(--radius);
   overflow: hidden;
   background: var(--bg-3);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   transition: border-color 240ms ease;
+  break-inside: avoid;
+  margin-bottom: .75rem;
+  display: inline-block;
+  width: 100%;
+  cursor: pointer;
+}
+
+/* HD badge */
+.hd-badge {
+  position: absolute; bottom: .45rem; right: .45rem;
+  background: rgba(107,158,196,.75);
+  color: #fff;
+  font-size: .55rem; font-weight: 700;
+  letter-spacing: .1em;
+  padding: .15rem .4rem;
+  border-radius: 3px;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
 }
 
 /* Gold ring on the featured photo */
@@ -135,26 +149,67 @@
   border-color: var(--gold);
   box-shadow: 0 0 0 1px var(--gold);
 }
-
-.photo-item img {
-  width: 100%; height: 100%; object-fit: cover;
-  display: block;
+.photo-item.bulk-selected {
+  border-color: #6b9ec4;
+  box-shadow: 0 0 0 1px #6b9ec4;
 }
 
-/* Overlay: hidden by default, slides up on hover */
+.photo-item img {
+  width: 100%;
+  height: auto;
+  max-height: 420px;    /* cap extremely tall images */
+  object-fit: cover;
+  display: block;
+  cursor: zoom-in;
+}
+
+/* Bulk checkbox — top-left, appears on hover or when selected */
+.photo-bulk-cb {
+  position: absolute; top: .45rem; left: .45rem; z-index: 3;
+  opacity: 0; transition: opacity 160ms;
+}
+.photo-item:hover .photo-bulk-cb,
+.photo-item.bulk-selected .photo-bulk-cb { opacity: 1; }
+.photo-bulk-cb input { width: 17px; height: 17px; accent-color: #6b9ec4; cursor: pointer; }
+
+/* Overlay: hidden by default, appears on hover */
 .photo-overlay {
   position: absolute; inset: 0;
-  background: rgba(0,0,0,.72);
+  background: linear-gradient(to top, rgba(0,0,0,.88) 0%, rgba(0,0,0,.2) 50%, transparent 100%);
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: .5rem;
+  align-items: center; justify-content: flex-end;
+  gap: .4rem;
   opacity: 0;
   transition: opacity 200ms ease;
-  padding: .75rem;
+  padding: .6rem;
 }
 .photo-item:hover .photo-overlay { opacity: 1; }
 
-/* Featured badge — always visible on the featured photo */
+/* Icon button row in overlay */
+.photo-action-row {
+  display: flex; gap: .35rem; justify-content: center; width: 100%;
+}
+
+.photo-icon-btn {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(6px);
+  color: rgba(255,255,255,.85);
+  font-size: .95rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+.photo-icon-btn:hover { transform: scale(1.1); }
+.photo-icon-btn.star:hover  { background: rgba(200,164,90,.7); border-color: var(--gold); color: #fff; }
+.photo-icon-btn.trash:hover { background: rgba(196,107,107,.7); border-color: var(--rose); color: #fff; }
+.photo-icon-btn.hd:hover    { background: rgba(107,158,196,.7); border-color: #6b9ec4;  color: #fff; }
+.photo-icon-btn.hd-done     { color: #6b9ec4; border-color: rgba(107,158,196,.4); }
+.photo-icon-btn.check:hover { background: rgba(107,196,107,.7); border-color: #6bc47a;  color: #fff; }
+
+/* Featured badge */
 .featured-badge {
   position: absolute; top: .5rem; left: .5rem;
   background: var(--gold);
@@ -163,36 +218,44 @@
   letter-spacing: .1em; text-transform: uppercase;
   padding: .2rem .5rem;
   border-radius: 999px;
-  pointer-events: none;   /* don't block the hover overlay */
+  pointer-events: none;
 }
 
-/* Buttons inside the overlay */
-.photo-btn {
-  width: 100%;
-  font-family: var(--font-sans);
-  font-size: .72rem; font-weight: 500;
-  letter-spacing: .07em; text-transform: uppercase;
-  padding: .45rem .75rem;
+/* Bulk action bar for actress page */
+.photo-bulk-bar {
+  display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+  padding: .6rem 1rem;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  border: 1px solid transparent;
-  cursor: pointer;
-  text-align: center;
-  transition: background 160ms ease, color 160ms ease;
+  margin-bottom: 1rem;
+  font-size: .75rem;
 }
+.photo-bulk-bar .lbl { color: var(--text-dim); flex: 1; }
+.photo-bulk-bar .lbl strong { color: var(--text); }
 
-.photo-btn-feature {
-  background: rgba(200,164,90,.18);
-  border-color: rgba(200,164,90,.4);
-  color: var(--gold);
+/* Custom number spinner */
+.spinner-wrap {
+  display: inline-flex; align-items: center;
+  background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
 }
-.photo-btn-feature:hover { background: rgba(200,164,90,.3); }
-
-.photo-btn-delete {
-  background: rgba(196,107,107,.15);
-  border-color: rgba(196,107,107,.35);
-  color: #c46b6b;
+.spinner-wrap input[type=number] {
+  background: transparent; border: none; outline: none;
+  color: var(--text); font-family: var(--font-sans);
+  font-size: .78rem; font-weight: 300;
+  width: 42px; text-align: center; padding: .35rem 0;
+  -moz-appearance: textfield;
 }
-.photo-btn-delete:hover { background: rgba(196,107,107,.28); }
+.spinner-wrap input[type=number]::-webkit-inner-spin-button,
+.spinner-wrap input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+.spinner-btn {
+  background: transparent; border: none; color: var(--text-dim);
+  padding: 0 .55rem; cursor: pointer; font-size: .9rem; line-height: 1;
+  transition: color var(--transition);
+  align-self: stretch; display: flex; align-items: center;
+}
+.spinner-btn:hover { color: var(--gold); }
 
 /* ── Upload area ────────────────────────────────────────────────────── */
 /*
@@ -289,20 +352,106 @@
 }
 .scene-link:hover { color: var(--gold); border-color: var(--gold-dim); }
 
-/* ── Lightbox ───────────────────────────────────────────────────────── */
+/* ── Inline edit ────────────────────────────────────────────────────── */
+.edit-toggle-btn {
+  font-family: var(--font-sans); font-size: .68rem; font-weight: 500;
+  letter-spacing: .1em; text-transform: uppercase;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-dim); border-radius: var(--radius);
+  padding: .28rem .7rem; cursor: pointer;
+  transition: color var(--transition), border-color var(--transition);
+}
+.edit-toggle-btn:hover { color: var(--gold); border-color: var(--gold-dim); }
+
+.edit-field {
+  background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text);
+  font-family: var(--font-sans); font-size: .95rem; font-weight: 300;
+  padding: .4rem .7rem; width: 100%; outline: none;
+  transition: border-color var(--transition);
+}
+.edit-field:focus { border-color: var(--gold-dim); }
+
+.view-mode .edit-only { display: none !important; }
+.edit-mode  .view-only { display: none !important; }
+.edit-save-row { display: flex; gap: .6rem; margin-top: 1.25rem; }
+
+/* ── Upgrade progress bar ───────────────────────────────────────────── */
+.upgrade-bar-wrap {
+  display: none;
+  background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  height: 6px; margin-top: .5rem; width: 100%;
+}
+.upgrade-bar-fill {
+  height: 100%; background: #6b9ec4;
+  width: 0%; transition: width 300ms ease;
+  border-radius: var(--radius);
+}
+.upgrade-status {
+  font-size: .72rem; color: var(--text-dim); margin-top: .3rem; display: none;
+}
+
+/* ── Lightbox — zoom + pan ───────────────────────────────────────────── */
 .lightbox {
   display: none; position: fixed; inset: 0; z-index: 1000;
-  background: rgba(0,0,0,.92);
+  background: rgba(0,0,0,.95);
   align-items: center; justify-content: center;
+  user-select: none;
 }
 .lightbox.open { display: flex; }
-.lightbox img { max-width: 90vw; max-height: 90vh; border-radius: var(--radius); object-fit: contain; }
+.lightbox-img-wrap {
+  position: relative;
+  overflow: hidden;
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+}
+.lightbox img {
+  max-width: 90vw; max-height: 90vh;
+  object-fit: contain; border-radius: var(--radius);
+  transform-origin: center center;
+  transition: transform 200ms ease;
+  will-change: transform;
+  cursor: grab;
+}
+.lightbox img.dragging { cursor: grabbing; transition: none; }
 .lightbox-close {
-  position: absolute; top: 1.5rem; right: 1.5rem;
-  color: var(--text-dim); font-size: 1.5rem; cursor: pointer;
+  position: absolute; top: 1.25rem; right: 1.5rem; z-index: 10;
+  color: var(--text-dim); font-size: 1.5rem; cursor: pointer; line-height: 1;
   transition: color var(--transition);
 }
 .lightbox-close:hover { color: var(--text); }
+.lightbox-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 10;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+  color: var(--text-mid); width: 48px; height: 48px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+.lightbox-arrow:hover { background: rgba(255,255,255,.16); color: var(--text); }
+.lightbox-prev { left: 1.25rem; }
+.lightbox-next { right: 1.25rem; }
+.lightbox-counter {
+  position: absolute; bottom: 1.25rem; left: 50%; transform: translateX(-50%); z-index: 10;
+  font-size: .72rem; color: var(--text-dim);
+  background: rgba(0,0,0,.55); padding: .22rem .7rem; border-radius: 999px;
+}
+.lightbox-zoom-bar {
+  position: absolute; bottom: 1.25rem; right: 1.5rem; z-index: 10;
+  display: flex; gap: .4rem; align-items: center;
+}
+.lb-zoom-btn {
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+  color: var(--text-mid); width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 1rem; line-height: 1;
+  transition: background var(--transition);
+}
+.lb-zoom-btn:hover { background: rgba(255,255,255,.16); color: var(--text); }
+.lb-zoom-pct {
+  font-size: .72rem; color: var(--text-dim); min-width: 36px; text-align: center;
+}
 
 {% endblock %}
 
@@ -331,65 +480,177 @@
   </div>
 
   <!-- Bio (right column) -->
-  <div>
-    <h1 class="detail-name">{{ actress.name }}</h1>
+  <div id="bioSection" class="view-mode">
 
-    <div class="stats-grid">
-      {% if actress.birth_country %}
-      <div class="stat-box">
-        <div class="stat-label">Country</div>
-        <div class="stat-value">{{ actress.birth_country }}</div>
-      </div>
-      {% endif %}
+    <!-- Name + edit toggle -->
+    <div style="display:flex;align-items:baseline;gap:1rem;margin-bottom:1.75rem;flex-wrap:wrap;">
+      <h1 class="detail-name" id="bioName">{{ actress.name }}</h1>
+      <button class="edit-toggle-btn view-only" onclick="bioEnterEdit()">✎ Edit</button>
+    </div>
 
-      {% if actress.date_of_birth %}
-      <div class="stat-box">
-        <div class="stat-label">Born</div>
-        <div class="stat-value">{{ actress.date_of_birth|date:"N j, Y" }}</div>
-      </div>
-      {% endif %}
-
-      {% if actress.height_cm %}
-      <div class="stat-box">
-        <div class="stat-label">Height</div>
-        <div class="stat-value">{{ actress.height_cm }} cm</div>
-      </div>
-      {% endif %}
-
-      {% if actress.weight_kg %}
-      <div class="stat-box">
-        <div class="stat-label">Weight</div>
-        <div class="stat-value">{{ actress.weight_kg }} kg</div>
-      </div>
-      {% endif %}
-
-      {% if actress.years_active_start %}
-      <div class="stat-box">
-        <div class="stat-label">Active</div>
-        <div class="stat-value">
-          {{ actress.years_active_start }}{% if actress.years_active_end %} – {{ actress.years_active_end }}{% else %} – now{% endif %}
+    <!-- ── VIEW MODE ── -->
+    <div class="view-only">
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-label">Country</div>
+          <div class="stat-value">{{ actress.birth_country|default:"—" }}</div>
+        </div>
+        {% if actress.nationality %}
+        <div class="stat-box">
+          <div class="stat-label">Nationality</div>
+          <div class="stat-value">{{ actress.nationality }}</div>
+        </div>
+        {% endif %}
+        {% if actress.date_of_birth %}
+        <div class="stat-box">
+          <div class="stat-label">Born</div>
+          <div class="stat-value">{{ actress.date_of_birth|date:"N j, Y" }}</div>
+        </div>
+        {% endif %}
+        {% if actress.height_cm %}
+        <div class="stat-box">
+          <div class="stat-label">Height</div>
+          <div class="stat-value">{{ actress.height_cm }} cm</div>
+        </div>
+        {% endif %}
+        {% if actress.weight_kg %}
+        <div class="stat-box">
+          <div class="stat-label">Weight</div>
+          <div class="stat-value">{{ actress.weight_kg }} kg</div>
+        </div>
+        {% endif %}
+        {% if actress.years_active_start %}
+        <div class="stat-box">
+          <div class="stat-label">Active</div>
+          <div class="stat-value">
+            {{ actress.years_active_start }}{% if actress.years_active_end %} – {{ actress.years_active_end }}{% else %} – now{% endif %}
+          </div>
+        </div>
+        {% endif %}
+        <div class="stat-box">
+          <div class="stat-label">Movies</div>
+          <div class="stat-value">{{ actress.movies.count }}</div>
         </div>
       </div>
+
+      {% if actress.notes %}
+      <div class="notes-block">{{ actress.notes }}</div>
       {% endif %}
 
-      <div class="stat-box">
-        <div class="stat-label">Movies</div>
-        <div class="stat-value">{{ actress.movies.count }}</div>
+      <!-- Star rating widget -->
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;">
+        <div id="ratingStars" style="display:flex;gap:.2rem;">
+          {% for i in "12345" %}
+          <span style="font-size:1.4rem;cursor:pointer;
+                       color:{% if actress.rating and forloop.counter <= actress.rating %}var(--gold){% else %}var(--border){% endif %};
+                       transition:color .15s;"
+                data-val="{{ forloop.counter }}"
+                onclick="setRating({{ actress.id }}, {{ forloop.counter }})"
+                onmouseover="hoverRating({{ forloop.counter }})"
+                onmouseout="hoverRating(0)">★</span>
+          {% endfor %}
+        </div>
+        {% if actress.rating %}
+        <button onclick="setRating({{ actress.id }}, 0)"
+                style="background:none;border:none;color:var(--text-dim);font-size:.68rem;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;">
+          Clear
+        </button>
+        {% endif %}
+      </div>
+
+      <!-- Social links -->
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem;">
+        {% if actress.official_website %}
+        <a href="{{ actress.official_website }}" target="_blank" rel="noopener" class="website-link">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <path d="M5 2H2a1 1 0 00-1 1v8a1 1 0 001 1h8a1 1 0 001-1V8M8 1h4m0 0v4m0-4L5.5 7.5"/>
+          </svg>
+          Website
+        </a>
+        {% endif %}
+        {% if actress.onlyfans_url %}
+        <a href="{{ actress.onlyfans_url }}" target="_blank" rel="noopener" class="website-link" style="color:#00aff0;">
+          OF
+        </a>
+        {% endif %}
+        {% if actress.twitter_url %}
+        <a href="{{ actress.twitter_url }}" target="_blank" rel="noopener" class="website-link">
+          𝕏
+        </a>
+        {% endif %}
+        {% if actress.instagram_url %}
+        <a href="{{ actress.instagram_url }}" target="_blank" rel="noopener" class="website-link" style="color:#e1306c;">
+          IG
+        </a>
+        {% endif %}
       </div>
     </div>
 
-    {% if actress.notes %}
-    <div class="notes-block">{{ actress.notes }}</div>
-    {% endif %}
+    <!-- ── EDIT MODE ── -->
+    <div class="edit-only">
+      <div class="stats-grid" style="margin-bottom:1.25rem;">
+        <div class="stat-box">
+          <div class="stat-label">Name</div>
+          <input class="edit-field" name="name" value="{{ actress.name }}">
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Country</div>
+          <input class="edit-field" name="birth_country" value="{{ actress.birth_country }}">
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Nationality</div>
+          <input class="edit-field" name="nationality" value="{{ actress.nationality }}">
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Born (YYYY-MM-DD)</div>
+          <input class="edit-field" name="date_of_birth" value="{{ actress.date_of_birth|date:'Y-m-d' }}" placeholder="1985-03-21">
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Height (cm)</div>
+          <input class="edit-field" name="height_cm" type="number" value="{{ actress.height_cm }}">
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Weight (kg)</div>
+          <input class="edit-field" name="weight_kg" type="number" value="{{ actress.weight_kg }}">
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Active from</div>
+          <input class="edit-field" name="years_active_start" type="number" value="{{ actress.years_active_start }}">
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Active to</div>
+          <input class="edit-field" name="years_active_end" type="number" value="{{ actress.years_active_end }}">
+        </div>
+        <div class="stat-box" style="grid-column: 1 / -1;">
+          <div class="stat-label">Official website</div>
+          <input class="edit-field" name="official_website" value="{{ actress.official_website }}">
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">OnlyFans URL</div>
+          <input class="edit-field" name="onlyfans_url" value="{{ actress.onlyfans_url }}">
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Twitter/X URL</div>
+          <input class="edit-field" name="twitter_url" value="{{ actress.twitter_url }}">
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Instagram URL</div>
+          <input class="edit-field" name="instagram_url" value="{{ actress.instagram_url }}">
+        </div>
+        <div class="stat-box" style="grid-column: 1 / -1;">
+          <div class="stat-label">Notes</div>
+          <textarea class="edit-field" name="notes" rows="3" style="resize:vertical;">{{ actress.notes }}</textarea>
+        </div>
+      </div>
+      <div class="edit-save-row">
+        <button class="btn btn-primary" onclick="bioSave({{ actress.id }})">Save changes</button>
+        <button class="btn btn-ghost" onclick="bioExitEdit()">Cancel</button>
+        <button class="btn btn-ghost" style="color:var(--gold);border-color:var(--gold-dim);"
+                onclick="refreshIafd({{ actress.id }})">↻ Refresh from IAFD</button>
+        <span id="bioSaveStatus" style="font-size:.78rem;color:var(--text-dim);align-self:center;"></span>
+      </div>
+    </div>
 
-    {% if actress.official_website %}
-    <a href="{{ actress.official_website }}" target="_blank" rel="noopener" class="website-link">
-      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-        <path d="M5 2H2a1 1 0 00-1 1v8a1 1 0 001 1h8a1 1 0 001-1V8M8 1h4m0 0v4m0-4L5.5 7.5"/>
-      </svg>
-      Official website
-    </a>
-    {% endif %}
   </div>
 
 </div>
@@ -404,69 +665,155 @@
       {% endwith %}
     </span>
     <span class="section-rule-line"></span>
+
+    <!-- Scrape form — triggers AJAX progress scrape -->
+    <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0;" id="scrapeControls">
+      <input type="text" id="scrapeSearchName" value="{{ actress.name }}"
+             title="Name to search on PornPics"
+             style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--radius);
+                    color:var(--text);font-family:var(--font-sans);font-size:.75rem;font-weight:300;
+                    padding:.35rem .7rem;width:130px;outline:none;"
+             onfocus="this.style.borderColor='var(--gold-dim)'"
+             onblur="this.style.borderColor='var(--border)'">
+      <div class="spinner-wrap" title="Galleries">
+        <button type="button" class="spinner-btn" onclick="spin('scrapeGalleries',-1)">−</button>
+        <input type="number" id="scrapeGalleries" value="10" min="1" max="30" style="width:36px;text-align:center;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--font-sans);font-size:.75rem;-moz-appearance:textfield;">
+        <button type="button" class="spinner-btn" onclick="spin('scrapeGalleries',1)">+</button>
+      </div>
+      <span style="font-size:.7rem;color:var(--text-dim);">gal ×</span>
+      <div class="spinner-wrap" title="Photos per gallery" id="photosPerGalWrap">
+        <button type="button" class="spinner-btn" onclick="spin('scrapePhotos',-1)">−</button>
+        <input type="number" id="scrapePhotos" value="5" min="1" max="20" style="width:30px;text-align:center;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--font-sans);font-size:.75rem;-moz-appearance:textfield;">
+        <button type="button" class="spinner-btn" onclick="spin('scrapePhotos',1)">+</button>
+      </div>
+      <span style="font-size:.7rem;color:var(--text-dim);" id="photosPerGalX">photos</span>
+      <button class="btn btn-ghost" style="font-size:.7rem;padding:.4rem .9rem;" onclick="startScrape()">
+        ⬇ Scrape
+      </button>
+
+      <!-- Full albums toggle -->
+      <label style="display:flex;align-items:center;gap:.35rem;font-size:.7rem;color:var(--text-dim);cursor:pointer;flex-shrink:0;">
+        <input type="checkbox" id="fullAlbumsCheck" accent-color="var(--gold)"
+               onchange="toggleFullAlbums(this)"
+               style="accent-color:var(--gold);cursor:pointer;">
+        Full albums
+      </label>
+    </div>
+
+    {% with actress.pending_staged_photos_count as pending_count %}
+    {% if pending_count %}
+      <a href="{% url 'photo_review' actress.id %}" class="btn btn-ghost"
+         style="font-size:.7rem;padding:.4rem .9rem;flex-shrink:0;">
+        Review Queue ({{ pending_count }})
+      </a>
+    {% endif %}
+    {% endwith %}
+
+    {% if actress.photos.count %}
+    <button class="btn btn-ghost" style="font-size:.7rem;padding:.4rem .9rem;flex-shrink:0;"
+            onclick="startSlideshow()" title="Slideshow — auto-advances every 3s">▶ Slideshow</button>
+    {% endif %}
+  </div>
+
+  <!-- Scrape progress bar (hidden until scrape starts) -->
+  <div id="scrapeProgressWrap" style="display:none;margin-bottom:1rem;">
+    <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:999px;height:7px;overflow:hidden;margin-bottom:.5rem;">
+      <div id="scrapeProgressFill" style="height:100%;background:var(--gold);width:0%;transition:width 400ms ease;border-radius:999px;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:.73rem;color:var(--text-dim);">
+      <span id="scrapeProgressText">Starting…</span>
+      <span id="scrapeProgressEta"></span>
+    </div>
   </div>
 
   <!-- Existing photos grid -->
   {% with actress.photos.all as photos %}
   {% if photos %}
+
+  <!-- Bulk action bar -->
+  <div class="photo-bulk-bar" id="photoBulkBar" style="display:none;">
+    <span class="lbl"><strong id="photoBulkCount">0</strong> selected</span>
+    <button class="btn btn-ghost" style="font-size:.7rem;padding:.35rem .8rem;"
+            onclick="bulkPhotosDelete()">✕ Delete selected</button>
+    <button class="btn btn-ghost" style="font-size:.7rem;padding:.35rem .8rem;color:#6b9ec4;border-color:rgba(107,158,196,.3);"
+            onclick="bulkPhotosUpgrade()" id="btnBulkUpgrade">↑ Upgrade HD selected</button>
+    <button class="btn btn-ghost" style="font-size:.7rem;padding:.35rem .8rem;"
+            onclick="photoSelectAll(false)">Clear</button>
+  </div>
+  <!-- Upgrade progress -->
+  <div class="upgrade-bar-wrap" id="upgradeBarWrap">
+    <div class="upgrade-bar-fill" id="upgradeBarFill"></div>
+  </div>
+  <div class="upgrade-status" id="upgradeStatus"></div>
+
   <div class="photo-gallery" style="margin-bottom:2rem;">
     {% for photo in photos %}
-    <div class="photo-item {% if photo.is_featured %}is-featured{% endif %}">
+    <div class="photo-item {% if photo.is_featured %}is-featured{% endif %}"
+         id="ph-{{ photo.id }}"
+         data-id="{{ photo.id }}"
+         data-upgrade-url="{% url 'upgrade_photo' photo.id %}"
+         data-has-1280="{{ photo.source_url_1280|yesno:'1,0' }}">
 
-      <!-- The photo itself (click = open lightbox) -->
+      <!-- Checkbox top-left — stopPropagation so it doesn't open lightbox -->
+      <div class="photo-bulk-cb">
+        <input type="checkbox" data-id="{{ photo.id }}"
+               onclick="event.stopPropagation()"
+               onchange="onPhotoCbChange(this)">
+      </div>
+
+      <!-- Image — click opens lightbox -->
       <img
         src="{{ photo.image.url }}"
         alt="{{ photo.caption|default:actress.name }}"
+        loading="eager"
+        onclick="openLightbox({{ forloop.counter0 }})"
         style="cursor:zoom-in;"
-        onclick="openLightbox('{{ photo.image.url }}')"
       >
 
-      <!-- Gold "Profile" badge — only shown on the featured photo -->
-      {% if photo.is_featured %}
-        <span class="featured-badge">Profile</span>
-      {% endif %}
+      {% if photo.is_featured %}<span class="featured-badge">Profile</span>{% endif %}
+      {% if photo.is_hd %}<span class="hd-badge" title="{% if photo.width and photo.height %}{{ photo.width }}×{{ photo.height }}{% else %}HD{% endif %}">HD{% if photo.width and photo.height %} {{ photo.width }}×{{ photo.height }}{% endif %}</span>{% elif photo.width and photo.height %}<span class="hd-badge" style="background:rgba(100,100,100,.6);" title="{{ photo.width }}×{{ photo.height }}">{{ photo.width }}×{{ photo.height }}</span>{% endif %}
 
-      <!-- Hover overlay with action buttons -->
-      <div class="photo-overlay">
+      <!-- Icon overlay — gradient bottom, circular icon buttons -->
+      <div class="photo-overlay" onclick="event.stopPropagation()">
+        <div class="photo-action-row">
 
-        <!-- "Set as profile" — only shown on non-featured photos -->
-        {% if not photo.is_featured %}
-        <form method="post" action="{% url 'set_featured_photo' photo.id %}">
-          {% csrf_token %}
-          {#
-            csrf_token is a security token Django requires on every form that
-            changes data. Without it Django will reject the request with a 403.
-          #}
-          <button type="submit" class="photo-btn photo-btn-feature">
-            ★ Set as profile
-          </button>
-        </form>
-        {% else %}
-        <span class="photo-btn photo-btn-feature" style="opacity:.45;cursor:default;">
-          ★ Current profile
-        </span>
-        {% endif %}
+          <!-- Select / checkbox toggle -->
+          <button class="photo-icon-btn check" title="Select"
+                  onclick="togglePhotoCb({{ photo.id }})">☑</button>
 
-        <!-- Delete button — asks for confirmation before submitting -->
-        <form
-          method="post"
-          action="{% url 'delete_photo' photo.id %}"
-          onsubmit="return confirm('Delete this photo? This cannot be undone.')"
-        >
-          {% csrf_token %}
-          <button type="submit" class="photo-btn photo-btn-delete">
-            ✕ Delete
-          </button>
-        </form>
+          <!-- Set as profile -->
+          {% if not photo.is_featured %}
+          <form method="post" action="{% url 'set_featured_photo' photo.id %}" style="display:contents;">
+            {% csrf_token %}
+            <button type="submit" class="photo-icon-btn star" title="Set as profile photo">★</button>
+          </form>
+          {% else %}
+          <button class="photo-icon-btn star" title="Current profile" style="opacity:.4;cursor:default;">★</button>
+          {% endif %}
 
+          <!-- Delete -->
+          <form method="post" action="{% url 'delete_photo' photo.id %}" style="display:contents;"
+                onsubmit="return confirm('Delete this photo?')">
+            {% csrf_token %}
+            <button type="submit" class="photo-icon-btn trash" title="Delete photo">🗑</button>
+          </form>
+
+          <!-- Upgrade HD (AJAX — no scroll jump) -->
+          {% if photo.source_url_1280 %}
+          <button class="photo-icon-btn hd" title="Upgrade to HD"
+                  id="hd-btn-{{ photo.id }}"
+                  onclick="singleUpgrade({{ photo.id }}, this)">↑HD</button>
+          {% elif photo.is_hd %}
+          <button class="photo-icon-btn hd hd-done" title="Already HD" disabled>HD✓</button>
+          {% endif %}
+
+        </div>
       </div>
     </div>
     {% endfor %}
   </div>
   {% endif %}
   {% endwith %}
-
-  <!-- Upload form -->
   <!--
     enctype="multipart/form-data" is REQUIRED for any form that uploads files.
     Without it, Django receives the filenames but not the actual file data.
@@ -536,105 +883,646 @@
 {% endif %}
 {% endwith %}
 
-<!-- ── Favourite scenes ───────────────────────────────────────────────────── -->
-{% with actress.favorite_scenes.all as scenes %}
-{% if scenes %}
+<!-- ── Favourite Scenes ───────────────────────────────────────────────────── -->
 <div class="section">
   <div class="section-rule">
     <span class="section-rule-label">Favourite Scenes</span>
     <span class="section-rule-line"></span>
+    <button class="btn btn-ghost" style="font-size:.7rem;padding:.35rem .8rem;flex-shrink:0;"
+            onclick="toggleSceneForm()">+ Add scene</button>
   </div>
-  {% for scene in scenes %}
-  <div class="scene-card">
-    {% if scene.movie %}
-      <div class="scene-movie">{{ scene.movie.title }}</div>
-    {% endif %}
-    <div class="scene-desc">{{ scene.description }}</div>
-    {% if scene.scene_link %}
-      <a href="{{ scene.scene_link }}" target="_blank" rel="noopener" class="scene-link">
-        Watch scene ↗
-      </a>
-    {% endif %}
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
-{% endwith %}
 
-<!-- ── Lightbox ───────────────────────────────────────────────────────────── -->
-<div class="lightbox" id="lightbox" onclick="closeLightbox()">
-  <span class="lightbox-close">✕</span>
-  <img src="" id="lightboxImg" alt="" onclick="event.stopPropagation()">
+  <!-- Add scene form (hidden by default) -->
+  <div id="sceneForm" style="display:none;background:var(--bg-3);border:1px solid var(--border);
+       border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1.5rem;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem;">
+      <div>
+        <label class="form-label">Title</label>
+        <input class="form-control" id="sceneTitle" placeholder="Scene or movie title">
+      </div>
+      <div>
+        <label class="form-label">Link</label>
+        <input class="form-control" id="sceneLink" placeholder="https://…">
+      </div>
+    </div>
+    <div style="margin-bottom:.75rem;">
+      <label class="form-label">Notes</label>
+      <textarea class="form-control" id="sceneDesc" rows="2" placeholder="What makes this scene great…"></textarea>
+    </div>
+    <div style="display:flex;align-items:center;gap:1rem;">
+      <div>
+        <label class="form-label">Rating</label>
+        <div id="sceneRatingPicker" style="display:flex;gap:.25rem;">
+          {% for i in "12345" %}
+          <span style="font-size:1.3rem;cursor:pointer;color:var(--border);transition:color .15s;"
+                data-val="{{ forloop.counter }}"
+                onclick="setSceneRating({{ forloop.counter }})"
+                onmouseover="hoverSceneRating({{ forloop.counter }})"
+                onmouseout="hoverSceneRating(0)">★</span>
+          {% endfor %}
+        </div>
+      </div>
+      <div style="flex:1;"></div>
+      <button class="btn btn-primary" style="font-size:.75rem;" onclick="submitScene({{ actress.id }})">Save scene</button>
+      <button class="btn btn-ghost" style="font-size:.75rem;" onclick="toggleSceneForm()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Scenes list -->
+  <div id="scenesList">
+    {% for scene in scenes %}
+    <div class="scene-card" id="scene-{{ scene.id }}">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;">
+        <div>
+          {% if scene.title %}<div class="scene-movie">{{ scene.title }}</div>{% endif %}
+          {% if scene.rating %}
+          <div style="margin-top:.2rem;">
+            {% for i in "12345" %}<span style="color:{% if forloop.counter <= scene.rating %}var(--gold){% else %}var(--border){% endif %};font-size:.8rem;">★</span>{% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        <button onclick="deleteScene({{ scene.id }})"
+                style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:.85rem;
+                       flex-shrink:0;transition:color .2s;" title="Delete scene"
+                onmouseover="this.style.color='var(--rose)'" onmouseout="this.style.color='var(--text-dim)'">✕</button>
+      </div>
+      {% if scene.description %}<div class="scene-desc">{{ scene.description }}</div>{% endif %}
+      {% if scene.scene_link %}
+      <a href="{{ scene.scene_link }}" target="_blank" rel="noopener" class="scene-link">Watch ↗</a>
+      {% endif %}
+    </div>
+    {% empty %}
+    <p id="scenesEmpty" style="color:var(--text-dim);font-size:.9rem;font-style:italic;">No scenes logged yet.</p>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ── Fullscreen Image Viewer ────────────────────────────────────────────── -->
+<div id="viewer" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.97);
+     flex-direction:column;align-items:center;justify-content:center;"
+     onclick="if(event.target===this)viewerClose()">
+
+  <!-- Close -->
+  <button onclick="viewerClose()" style="position:absolute;top:1rem;right:1.5rem;
+    background:none;border:none;color:rgba(255,255,255,.5);font-size:1.8rem;cursor:pointer;
+    transition:color .2s;z-index:10;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,.5)'">✕</button>
+
+  <!-- Counter -->
+  <div id="viewerCounter" style="position:absolute;top:1.1rem;left:50%;transform:translateX(-50%);
+    font-size:.75rem;color:rgba(255,255,255,.4);letter-spacing:.1em;"></div>
+
+  <!-- Main image -->
+  <img id="viewerImg" src="" alt="" style="max-width:92vw;max-height:88vh;object-fit:contain;
+       border-radius:4px;user-select:none;transition:opacity .15s ease;">
+
+  <!-- Prev / Next arrows -->
+  <button onclick="viewerStep(-1)" style="position:absolute;left:1rem;top:50%;transform:translateY(-50%);
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);
+    width:52px;height:52px;border-radius:50%;font-size:1.6rem;cursor:pointer;display:flex;
+    align-items:center;justify-content:center;transition:background .2s;"
+    onmouseover="this.style.background='rgba(255,255,255,.18)'" onmouseout="this.style.background='rgba(255,255,255,.08)'">‹</button>
+  <button onclick="viewerStep(1)" style="position:absolute;right:1rem;top:50%;transform:translateY(-50%);
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);
+    width:52px;height:52px;border-radius:50%;font-size:1.6rem;cursor:pointer;display:flex;
+    align-items:center;justify-content:center;transition:background .2s;"
+    onmouseover="this.style.background='rgba(255,255,255,.18)'" onmouseout="this.style.background='rgba(255,255,255,.08)'">›</button>
+
+  <!-- Thumbnail strip at bottom -->
+  <div id="viewerStrip" style="position:absolute;bottom:0;left:0;right:0;
+    display:flex;gap:4px;padding:6px 6px;overflow-x:auto;background:rgba(0,0,0,.6);
+    scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent;"></div>
 </div>
 
 <script>
-  // ── Lightbox ──────────────────────────────────────────────────────────────
-  function openLightbox(src) {
-    document.getElementById('lightboxImg').src = src;
-    document.getElementById('lightbox').classList.add('open');
-    document.body.style.overflow = 'hidden';
+const CSRF = () => document.cookie.split('; ').find(r=>r.startsWith('csrftoken='))?.split('=')[1]||'';
+
+async function ajaxPost(url, data={}) {
+  const fd = new FormData();
+  fd.append('csrfmiddlewaretoken', CSRF());
+  for (const [k,v] of Object.entries(data)) {
+    if (Array.isArray(v)) v.forEach(x => fd.append(k, x));
+    else fd.append(k, v);
   }
-  function closeLightbox() {
-    document.getElementById('lightbox').classList.remove('open');
-    document.body.style.overflow = '';
-  }
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeLightbox();
-  });
+  const r = await fetch(url, {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd});
+  return r.json();
+}
 
-  // ── Upload: file preview + drag & drop ────────────────────────────────────
-  const input       = document.getElementById('photoInput');
-  const area        = document.getElementById('uploadArea');
-  const preview     = document.getElementById('uploadPreview');
-  const submitRow   = document.getElementById('uploadSubmitRow');
-  const countLabel  = document.getElementById('uploadCount');
+// ── Spinners ──────────────────────────────────────────────────────────────────
+function spin(id, delta) {
+  const inp = document.getElementById(id);
+  if (!inp) return;
+  const val = parseInt(inp.value) + delta;
+  inp.value = Math.max(parseInt(inp.min || 1), Math.min(parseInt(inp.max || 99), val));
+}
 
-  // When the user picks files via the file picker
-  input.addEventListener('change', () => showPreviews(input.files));
+// ── Full albums toggle — hides photos-per-gallery spinner ─────────────────────
+function toggleFullAlbums(cb) {
+  const photosWrap = document.getElementById('photosPerGalWrap');
+  const photosX    = document.getElementById('photosPerGalX');
+  if (photosWrap) photosWrap.style.display = cb.checked ? 'none' : '';
+  if (photosX)    photosX.style.display    = cb.checked ? 'none' : '';
+}
 
-  // Drag & drop — add visual feedback while files are hovering over the area
-  area.addEventListener('dragover', e => {
-    e.preventDefault();                    // allow drop
-    area.classList.add('dragover');
-  });
-  area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+// ── Photo scrape with background task + progress bar ─────────────────────────
+async function startScrape() {
+  const searchName   = document.getElementById('scrapeSearchName').value.trim();
+  const maxGalleries = parseInt(document.getElementById('scrapeGalleries').value) || 10;
+  const photosPerGal = parseInt(document.getElementById('scrapePhotos')?.value) || 5;
+  const fullAlbums   = document.getElementById('fullAlbumsCheck')?.checked || false;
 
-  // When files are actually dropped
-  area.addEventListener('drop', e => {
-    e.preventDefault();
-    area.classList.remove('dragover');
+  const progressWrap = document.getElementById('scrapeProgressWrap');
+  const fill         = document.getElementById('scrapeProgressFill');
+  const text         = document.getElementById('scrapeProgressText');
+  const eta          = document.getElementById('scrapeProgressEta');
 
-    // Assign the dropped files to the input so the form submits them
-    // DataTransfer.files is read-only, so we use a DataTransfer object trick
-    const dt   = new DataTransfer();
-    [...e.dataTransfer.files].forEach(f => dt.items.add(f));
-    input.files = dt.files;
-    showPreviews(input.files);
-  });
+  progressWrap.style.display = 'block';
+  fill.style.width = '5%';
+  text.textContent = 'Starting background scrape…';
+  eta.textContent  = 'You can navigate away — progress is tracked';
 
-  function showPreviews(files) {
-    preview.innerHTML = '';            // clear any previous previews
+  const scrapeBtn = document.querySelector('[onclick="startScrape()"]');
+  if (scrapeBtn) scrapeBtn.disabled = true;
 
-    if (!files || files.length === 0) {
-      submitRow.style.display = 'none';
+  const fd = new FormData();
+  fd.append('csrfmiddlewaretoken', CSRF());
+  fd.append('search_name', searchName);
+  fd.append('max_galleries', maxGalleries);
+  fd.append('photos_per_gallery', fullAlbums ? 999 : photosPerGal);
+  if (fullAlbums) fd.append('full_albums', '1');
+
+  try {
+    const r    = await fetch('{% url "scrape_photos_bg" actress.id %}', {method:'POST', body:fd});
+    const data = await r.json();
+
+    if (!data.ok) {
+      text.textContent = 'Error starting scrape';
+      if (scrapeBtn) scrapeBtn.disabled = false;
       return;
     }
 
-    // Show a small thumbnail for each chosen file
-    [...files].forEach(file => {
-      const reader = new FileReader();
-      reader.onload = e => {
-        const img = document.createElement('img');
-        img.src = e.target.result;
-        preview.appendChild(img);
-      };
-      reader.readAsDataURL(file);
-    });
+    // Poll the task
+    localStorage.setItem('activeTask_{{ actress.id }}', data.task_id);
+    pollScrapeTask(data.task_id);
 
-    // Show the submit button and a "3 photos selected" label
-    submitRow.style.display = 'flex';
-    countLabel.textContent  = `${files.length} photo${files.length > 1 ? 's' : ''} selected`;
+  } catch(err) {
+    text.textContent = 'Network error';
+    if (scrapeBtn) scrapeBtn.disabled = false;
   }
+}
+
+async function pollScrapeTask(taskId) {
+  const fill = document.getElementById('scrapeProgressFill');
+  const text = document.getElementById('scrapeProgressText');
+  const eta  = document.getElementById('scrapeProgressEta');
+
+  try {
+    const r    = await fetch(`/tasks/${taskId}/status/`);
+    const data = await r.json();
+
+    fill.style.width = data.pct + '%';
+    text.textContent = data.message || 'Working…';
+
+    if (data.status === 'done') {
+      fill.style.width = '100%';
+      eta.textContent  = '';
+      const reviewUrl  = '{% url "photo_review" actress.id %}';
+      text.innerHTML   = `Done! <a href="${reviewUrl}" style="color:var(--gold);">Go to Review Queue →</a>`;
+      localStorage.removeItem('activeTask_{{ actress.id }}');
+      const scrapeBtn = document.querySelector('[onclick="startScrape()"]');
+      if (scrapeBtn) scrapeBtn.disabled = false;
+      // Refresh pending count badge
+      setTimeout(() => window.location.reload(), 2000);
+    } else if (data.status === 'error') {
+      text.textContent = `Error: ${data.error}`;
+      eta.textContent  = '';
+      const scrapeBtn = document.querySelector('[onclick="startScrape()"]');
+      if (scrapeBtn) scrapeBtn.disabled = false;
+    } else {
+      eta.textContent = 'Running in background…';
+      setTimeout(() => pollScrapeTask(taskId), 2500);
+    }
+  } catch {
+    setTimeout(() => pollScrapeTask(taskId), 3000);
+  }
+}
+
+// Resume polling if a task was running when page was last loaded
+(function resumeTask() {
+  const taskId = localStorage.getItem('activeTask_{{ actress.id }}');
+  if (taskId) {
+    document.getElementById('scrapeProgressWrap').style.display = 'block';
+    document.getElementById('scrapeProgressText').textContent = 'Resuming…';
+    pollScrapeTask(taskId);
+  }
+})();
+
+// ── Fullscreen image viewer ───────────────────────────────────────────────────
+const _photos = [
+  {% with actress.photos.all as photos %}
+  {% for photo in photos %}{ id: {{ photo.id }}, src: '{{ photo.image.url }}' },{% endfor %}
+  {% endwith %}
+];
+let _viewerIdx = 0;
+
+function openLightbox(idx) {
+  _viewerIdx = Math.max(0, Math.min(idx, _photos.length - 1));
+  _viewerShow();
+}
+
+function _viewerShow() {
+  const viewer = document.getElementById('viewer');
+  const img    = document.getElementById('viewerImg');
+  const ctr    = document.getElementById('viewerCounter');
+  const strip  = document.getElementById('viewerStrip');
+
+  img.style.opacity = '0';
+  img.src = _photos[_viewerIdx].src;
+  img.onload = () => { img.style.opacity = '1'; };
+  ctr.textContent = `${_viewerIdx + 1} / ${_photos.length}`;
+
+  viewer.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  // Thumbnail strip
+  if (!strip.children.length) {
+    _photos.forEach((p, i) => {
+      const t = document.createElement('img');
+      t.src   = p.src;
+      t.style.cssText = 'height:60px;width:auto;object-fit:cover;border-radius:3px;cursor:pointer;opacity:.5;flex-shrink:0;transition:opacity .15s;';
+      t.onclick = () => { _viewerIdx = i; _viewerShow(); };
+      strip.appendChild(t);
+    });
+  }
+  // Highlight active thumb
+  [...strip.children].forEach((t, i) => { t.style.opacity = i === _viewerIdx ? '1' : '.45'; });
+  // Scroll strip to active thumb
+  const activeThumb = strip.children[_viewerIdx];
+  if (activeThumb) activeThumb.scrollIntoView({inline:'center', behavior:'smooth'});
+}
+
+function viewerStep(d) {
+  _viewerIdx = (_viewerIdx + d + _photos.length) % _photos.length;
+  _viewerShow();
+}
+
+function viewerClose() {
+  document.getElementById('viewer').style.display = 'none';
+  document.body.style.overflow = '';
+  stopSlideshow();
+}
+
+document.addEventListener('keydown', e => {
+  if (document.getElementById('viewer').style.display === 'none') return;
+  if (e.key === 'ArrowLeft')  viewerStep(-1);
+  if (e.key === 'ArrowRight') viewerStep(1);
+  if (e.key === 'Escape')     viewerClose();
+});
+
+// ── Single HD upgrade — AJAX, no page scroll ──────────────────────────────────
+async function singleUpgrade(photoId, btn) {
+  btn.textContent = '…';
+  btn.disabled    = true;
+  const el        = document.getElementById(`ph-${photoId}`);
+  const url       = el?.dataset.upgradeUrl;
+  if (!url) return;
+
+  const res = await ajaxPost(url);
+  if (res.ok) {
+    // Update image src in-place (new HD file)
+    const img = el.querySelector('img');
+    if (img && res.new_url) img.src = res.new_url + '?t=' + Date.now();
+    // Show HD badge
+    let badge = el.querySelector('.hd-badge');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'hd-badge';
+      badge.textContent = 'HD';
+      el.appendChild(badge);
+    }
+    // Replace button with done state
+    btn.textContent = 'HD✓';
+    btn.classList.add('hd-done');
+    btn.classList.remove('hd');
+    el.dataset.has1280 = '0';
+    refreshPhotoBulkBar();
+  } else {
+    btn.textContent = '↑HD';
+    btn.disabled    = false;
+  }
+}
+
+// ── Star rating ──────────────────────────────────────────────────────────────
+const _savedRating = {{ actress.rating|default:0 }};
+let _currentRating = _savedRating;
+
+function hoverRating(val) {
+  document.querySelectorAll('#ratingStars span').forEach((s, i) => {
+    s.style.color = (val > 0 ? i < val : i < _currentRating) ? 'var(--gold)' : 'var(--border)';
+  });
+}
+async function setRating(actressId, val) {
+  const res = await ajaxPost(`/actresses/${actressId}/rate/`, { rating: val });
+  if (res.ok) {
+    _currentRating = res.rating || 0;
+    hoverRating(0);
+  }
+}
+
+// ── Scenes ────────────────────────────────────────────────────────────────────
+let _sceneRating = 0;
+
+function toggleSceneForm() {
+  const f = document.getElementById('sceneForm');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+
+function setSceneRating(val) {
+  _sceneRating = val;
+  hoverSceneRating(val);
+}
+
+function hoverSceneRating(val) {
+  document.querySelectorAll('#sceneRatingPicker span').forEach((s, i) => {
+    s.style.color = (val > 0 ? i < val : i < _sceneRating) ? 'var(--gold)' : 'var(--border)';
+  });
+}
+
+async function submitScene(actressId) {
+  const title = document.getElementById('sceneTitle').value.trim();
+  const desc  = document.getElementById('sceneDesc').value.trim();
+  const link  = document.getElementById('sceneLink').value.trim();
+
+  if (!title && !desc) { alert('Enter a title or description.'); return; }
+
+  const res = await ajaxPost(`/actresses/${actressId}/scenes/add/`, {
+    title, description: desc, scene_link: link, rating: _sceneRating || '',
+  });
+
+  if (res.ok) {
+    // Remove empty state text
+    document.getElementById('scenesEmpty')?.remove();
+    // Add card to top of list
+    const stars = _sceneRating
+      ? '★'.repeat(_sceneRating) + '<span style="color:var(--border)">★</span>'.repeat(5 - _sceneRating)
+      : '';
+    const card = document.createElement('div');
+    card.className = 'scene-card';
+    card.id = `scene-${res.id}`;
+    card.innerHTML = `
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;">
+        <div>
+          ${res.title ? `<div class="scene-movie">${res.title}</div>` : ''}
+          ${stars ? `<div style="margin-top:.2rem;font-size:.8rem;">${stars}</div>` : ''}
+        </div>
+        <button onclick="deleteScene(${res.id})"
+                style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:.85rem;"
+                onmouseover="this.style.color='var(--rose)'" onmouseout="this.style.color='var(--text-dim)'">✕</button>
+      </div>
+      ${res.description ? `<div class="scene-desc">${res.description}</div>` : ''}
+      ${res.scene_link ? `<a href="${res.scene_link}" target="_blank" rel="noopener" class="scene-link">Watch ↗</a>` : ''}
+    `;
+    document.getElementById('scenesList').prepend(card);
+    // Reset form
+    document.getElementById('sceneTitle').value = '';
+    document.getElementById('sceneDesc').value  = '';
+    document.getElementById('sceneLink').value  = '';
+    _sceneRating = 0; hoverSceneRating(0);
+    toggleSceneForm();
+  }
+}
+
+async function deleteScene(sceneId) {
+  if (!confirm('Delete this scene entry?')) return;
+  const res = await ajaxPost(`/scenes/${sceneId}/delete/`);
+  if (res.ok) document.getElementById(`scene-${sceneId}`)?.remove();
+}
+
+// ── Slideshow ─────────────────────────────────────────────────────────────────
+let _slideshowTimer = null;
+
+function startSlideshow() {
+  openLightbox(0);
+  _slideshowTimer = setInterval(() => {
+    viewerStep(1);
+  }, 3000);
+}
+
+function stopSlideshow() {
+  clearInterval(_slideshowTimer);
+  _slideshowTimer = null;
+}
+
+// ── Recently viewed tracking ──────────────────────────────────────────────────
+(function trackView() {
+  const RV_KEY = 'actressdb_recently_viewed';
+  const actressId   = {{ actress.id }};
+  const actressName = '{{ actress.name|escapejs }}';
+  const photoUrl    = '{% if actress.featured_photo %}{{ actress.featured_photo.image.url }}{% endif %}';
+
+  try {
+    let rv = JSON.parse(localStorage.getItem(RV_KEY)) || [];
+    rv = rv.filter(x => x.id !== actressId);
+    rv.unshift({ id: actressId, name: actressName, url: window.location.pathname, photo: photoUrl });
+    if (rv.length > 10) rv = rv.slice(0, 10);
+    localStorage.setItem(RV_KEY, JSON.stringify(rv));
+  } catch(e) {}
+})();
+
+// ── Inline edit ───────────────────────────────────────────────────────────────
+function bioEnterEdit() {
+  document.getElementById('bioSection').className = 'edit-mode';
+}
+function bioExitEdit() {
+  document.getElementById('bioSection').className = 'view-mode';
+  document.getElementById('bioSaveStatus').textContent = '';
+}
+async function bioSave(actressId) {
+  const section = document.getElementById('bioSection');
+  const status  = document.getElementById('bioSaveStatus');
+  status.textContent = 'Saving…';
+  status.style.color = 'var(--text-dim)';
+
+  const fd = new FormData();
+  fd.append('csrfmiddlewaretoken', CSRF());
+  section.querySelectorAll('.edit-field').forEach(el => fd.append(el.name, el.value));
+
+  try {
+    const r    = await fetch(`/actresses/{{ actress.id }}/update/`, {
+      method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: fd,
+    });
+    const data = await r.json();
+    if (data.ok) {
+      status.textContent = '✓ Saved';
+      status.style.color = '#6bc47a';
+      document.getElementById('bioName').textContent = data.name;
+      setTimeout(() => { bioExitEdit(); }, 1200);
+    } else {
+      status.textContent = 'Save failed';
+      status.style.color = 'var(--rose)';
+    }
+  } catch {
+    status.textContent = 'Network error';
+    status.style.color = 'var(--rose)';
+  }
+}
+
+async function refreshIafd(actressId) {
+  const status = document.getElementById('bioSaveStatus');
+  status.textContent = '↻ Refreshing from IAFD…';
+  status.style.color = 'var(--gold)';
+
+  const fd = new FormData();
+  fd.append('csrfmiddlewaretoken', CSRF());
+
+  try {
+    const r    = await fetch(`/actresses/${actressId}/refresh-iafd/`, {
+      method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: fd,
+    });
+    const data = await r.json();
+    if (data.ok) {
+      status.textContent = '✓ Updated from IAFD';
+      status.style.color = '#6bc47a';
+      // Fill edit fields with fresh data
+      const d = data.data;
+      const setField = (name, val) => {
+        const el = document.querySelector(`.edit-field[name="${name}"]`);
+        if (el && val) el.value = val;
+      };
+      setField('birth_country',      d.birth_country);
+      setField('date_of_birth',      d.date_of_birth);
+      setField('height_cm',          d.height_cm);
+      setField('weight_kg',          d.weight_kg);
+      setField('years_active_start', d.years_active_start);
+      setField('years_active_end',   d.years_active_end);
+    } else {
+      status.textContent = `IAFD error: ${data.error}`;
+      status.style.color = 'var(--rose)';
+    }
+  } catch {
+    status.textContent = 'Network error';
+    status.style.color = 'var(--rose)';
+  }
+}
+
+// ── Bulk photo select ─────────────────────────────────────────────────────────
+function togglePhotoCb(photoId) {
+  const cb = document.querySelector(`#ph-${photoId} .photo-bulk-cb input`);
+  if (!cb) return;
+  cb.checked = !cb.checked;
+  onPhotoCbChange(cb);
+}
+function getSelectedPhotos() {
+  return [...document.querySelectorAll('.photo-bulk-cb input:checked')].map(cb => cb.dataset.id);
+}
+function onPhotoCbChange(cb) {
+  cb.closest('.photo-item').classList.toggle('bulk-selected', cb.checked);
+  refreshPhotoBulkBar();
+}
+function photoSelectAll(checked) {
+  document.querySelectorAll('.photo-bulk-cb input').forEach(cb => {
+    cb.checked = checked;
+    cb.closest('.photo-item').classList.toggle('bulk-selected', checked);
+  });
+  refreshPhotoBulkBar();
+}
+function refreshPhotoBulkBar() {
+  const ids = getSelectedPhotos();
+  const n   = ids.length;
+  document.getElementById('photoBulkBar').style.display = n > 0 ? 'flex' : 'none';
+  document.getElementById('photoBulkCount').textContent = n;
+  const anyUpgradable = ids.some(id => document.getElementById(`ph-${id}`)?.dataset.has1280 === '1');
+  document.getElementById('btnBulkUpgrade').style.display = anyUpgradable ? '' : 'none';
+}
+
+async function bulkPhotosDelete() {
+  const ids = getSelectedPhotos();
+  if (!ids.length) return;
+  if (!confirm(`Delete ${ids.length} photo${ids.length > 1 ? 's' : ''}? Cannot be undone.`)) return;
+  const res = await ajaxPost('{% url "bulk_delete_photos" %}', {'photo_ids[]': ids});
+  if (res.ok) { ids.forEach(id => document.getElementById(`ph-${id}`)?.remove()); refreshPhotoBulkBar(); }
+}
+
+// Bulk upgrade — processes one at a time with progress bar, no full reload
+async function bulkPhotosUpgrade() {
+  const ids = getSelectedPhotos().filter(id => document.getElementById(`ph-${id}`)?.dataset.has1280 === '1');
+  if (!ids.length) { alert('Select at least one photo with an HD source available (↑HD button visible).'); return; }
+
+  const btn      = document.getElementById('btnBulkUpgrade');
+  const barWrap  = document.getElementById('upgradeBarWrap');
+  const barFill  = document.getElementById('upgradeBarFill');
+  const statusEl = document.getElementById('upgradeStatus');
+
+  btn.disabled = true;
+  barWrap.style.display  = 'block';
+  statusEl.style.display = 'block';
+
+  let done = 0;
+  for (const id of ids) {
+    statusEl.textContent = `Upgrading ${done + 1} of ${ids.length}…`;
+    const el    = document.getElementById(`ph-${id}`);
+    const hdBtn = document.getElementById(`hd-btn-${id}`);
+    // Each photo item stores its own upgrade URL in data-upgrade-url
+    const url   = el?.dataset.upgradeUrl;
+    if (!url) { done++; continue; }
+
+    const res = await ajaxPost(url);
+    done++;
+    barFill.style.width = Math.round(done / ids.length * 100) + '%';
+
+    if (res.ok && el) {
+      const img = el.querySelector('img');
+      if (img && res.new_url) img.src = res.new_url + '?t=' + Date.now();
+      let badge = el.querySelector('.hd-badge');
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className   = 'hd-badge';
+        badge.textContent = 'HD';
+        el.appendChild(badge);
+      }
+      if (hdBtn) { hdBtn.textContent = 'HD✓'; hdBtn.classList.add('hd-done'); hdBtn.disabled = true; }
+      el.dataset.has1280 = '0';
+    }
+  }
+
+  statusEl.textContent = `Done — ${done} photo${done > 1 ? 's' : ''} upgraded`;
+  btn.disabled = false;
+  setTimeout(() => {
+    barWrap.style.display  = 'none';
+    statusEl.style.display = 'none';
+    barFill.style.width    = '0%';
+    photoSelectAll(false);
+  }, 2500);
+  }, 2000);
+}
+
+// ── Upload: preview + drag & drop ─────────────────────────────────────────────
+const input      = document.getElementById('photoInput');
+const area       = document.getElementById('uploadArea');
+const preview    = document.getElementById('uploadPreview');
+const submitRow  = document.getElementById('uploadSubmitRow');
+const countLabel = document.getElementById('uploadCount');
+
+input.addEventListener('change', () => showPreviews(input.files));
+area.addEventListener('dragover',  e => { e.preventDefault(); area.classList.add('dragover'); });
+area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+area.addEventListener('drop', e => {
+  e.preventDefault(); area.classList.remove('dragover');
+  const dt = new DataTransfer();
+  [...e.dataTransfer.files].forEach(f => dt.items.add(f));
+  input.files = dt.files;
+  showPreviews(input.files);
+});
+function showPreviews(files) {
+  preview.innerHTML = '';
+  if (!files?.length) { submitRow.style.display = 'none'; return; }
+  [...files].forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => { const img = document.createElement('img'); img.src = e.target.result; preview.appendChild(img); };
+    reader.readAsDataURL(file);
+  });
+  submitRow.style.display = 'flex';
+  countLabel.textContent  = `${files.length} photo${files.length > 1 ? 's' : ''} selected`;
+}
 </script>
 
 {% endblock %}

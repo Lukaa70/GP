@@ -1,0 +1,423 @@
+{% extends 'catalog/index.html' %}
+
+{% block title %}Review Queue — ActressDB{% endblock %}
+
+{% block extra_styles %}
+
+/* ── Review table ───────────────────────────────────────────────────── */
+.review-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .85rem;
+}
+
+.review-table th {
+  font-size: .68rem;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-align: left;
+  padding: .6rem 1rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.review-table td {
+  padding: .85rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-mid);
+  vertical-align: middle;
+}
+
+.review-table tr:last-child td { border-bottom: none; }
+
+.review-table tr:hover td { background: rgba(255,255,255,.015); }
+
+.name-cell {
+  color: var(--text);
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.query-tag {
+  font-size: .7rem;
+  color: var(--text-dim);
+  display: block;
+  margin-top: .1rem;
+}
+
+.actions { display: flex; gap: .5rem; }
+
+/* Status badges */
+.badge {
+  display: inline-block;
+  font-size: .68rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: .2rem .6rem;
+  border-radius: 999px;
+}
+.badge-approved { background: rgba(107, 196, 122, .12); color: #6bc47a; border: 1px solid rgba(107,196,122,.25); }
+.badge-rejected { background: rgba(196, 107, 107, .12); color: var(--rose);  border: 1px solid rgba(196,107,107,.25); }
+.badge-error    { background: rgba(196, 164, 107, .12); color: #c4a46b; border: 1px solid rgba(196,164,107,.25); }
+
+/* ── Section blocks ─────────────────────────────────────────────────── */
+.section-block {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 2.5rem;
+}
+
+.section-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-block-title {
+  font-size: .7rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.empty-row td {
+  text-align: center;
+  color: var(--text-dim);
+  font-style: italic;
+  padding: 2.5rem;
+}
+
+/* ── Btn small ──────────────────────────────────────────────────────── */
+.btn-sm {
+  font-size: .72rem;
+  padding: .35rem .9rem;
+}
+
+.btn-approve {
+  background: rgba(107,196,122,.12);
+  color: #6bc47a;
+  border: 1px solid rgba(107,196,122,.3);
+}
+.btn-approve:hover { background: rgba(107,196,122,.22); }
+
+.btn-reject {
+  background: rgba(196,107,107,.10);
+  color: var(--rose);
+  border: 1px solid rgba(196,107,107,.25);
+}
+.btn-reject:hover { background: rgba(196,107,107,.20); }
+
+/* Custom spinner */
+.spinner-wrap {
+  display: inline-flex; align-items: center;
+  background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.spinner-wrap input[type=number] {
+  background: transparent; border: none; outline: none;
+  color: var(--text); font-family: var(--font-sans);
+  font-size: .72rem; width: 36px; text-align: center; padding: .28rem 0;
+  -moz-appearance: textfield;
+}
+.spinner-wrap input[type=number]::-webkit-inner-spin-button,
+.spinner-wrap input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+.spinner-btn {
+  background: transparent; border: none; color: var(--text-dim);
+  padding: 0 .45rem; cursor: pointer; font-size: .85rem; line-height: 1;
+  transition: color var(--transition);
+  align-self: stretch; display: flex; align-items: center;
+}
+.spinner-btn:hover { color: var(--gold); }
+
+/* Pick different result panel */
+.pick-panel {
+  display: none;
+  margin-top: .6rem;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .75rem 1rem;
+}
+.pick-panel.open { display: block; }
+.pick-label {
+  font-size: .68rem; font-weight: 500;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-dim); margin-bottom: .5rem; display: block;
+}
+.pick-option {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .3rem 0; font-size: .82rem; color: var(--text-mid);
+}
+.pick-option input[type=radio] { accent-color: var(--gold); }
+.pick-option label { cursor: pointer; }
+.pick-submit {
+  margin-top: .6rem;
+  background: var(--gold); color: #0e0e10;
+  border: none; border-radius: var(--radius);
+  font-family: var(--font-sans); font-size: .7rem;
+  font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+  padding: .35rem .9rem; cursor: pointer;
+}
+.btn-pick-toggle {
+  background: transparent; color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-family: var(--font-sans); font-size: .68rem;
+  font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+  padding: .3rem .7rem; cursor: pointer;
+  transition: color var(--transition), border-color var(--transition);
+}
+.btn-pick-toggle:hover { color: var(--gold); border-color: var(--gold-dim); }
+
+{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2.5rem;gap:1rem;">
+  <div>
+    <h1>Review Queue</h1>
+    <p style="margin-top:.5rem;color:var(--text-dim);font-size:.9rem;">
+      Approve entries to add them to your collection, or reject to discard.
+    </p>
+  </div>
+  <a href="{% url 'bulk_import' %}" class="btn btn-ghost" style="flex-shrink:0;">+ New Import</a>
+</div>
+
+
+<!-- ── PENDING ────────────────────────────────────────────────────────────── -->
+<div class="section-block">
+  <div class="section-block-header">
+    <span class="section-block-title">Pending review</span>
+    <span style="font-size:.78rem;color:var(--text-dim);">{{ pending|length }} entr{{ pending|length|pluralize:"y,ies" }}</span>
+  </div>
+  <table class="review-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Born</th>
+        <th>Country</th>
+        <th>Height</th>
+        <th>Weight</th>
+        <th>Active</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in pending %}
+      <tr>
+        <td>
+          <span class="name-cell">{{ s.name|default:"—" }}</span>
+          {% if s.iafd_url %}
+            <a href="{{ s.iafd_url }}" target="_blank" rel="noopener"
+               style="display:inline-block;margin-left:.4rem;font-size:.65rem;color:var(--text-dim);
+                      border-bottom:1px solid var(--border);transition:color .2s;"
+               onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text-dim)'">
+              IAFD ↗
+            </a>
+          {% endif %}
+          {% if s.query != s.name %}
+            <span class="query-tag">searched: {{ s.query }}</span>
+          {% endif %}
+          {% if s.has_alternatives %}
+          <div>
+            <button type="button" class="btn-pick-toggle" style="margin-top:.4rem;"
+                    onclick="togglePick('pick-{{ s.id }}')">
+              ⇄ Pick different match
+            </button>
+            <div id="pick-{{ s.id }}" class="pick-panel">
+              <span class="pick-label">{{ s.iafd_search_results|length }} results found — pick the correct one:</span>
+              <form method="post" action="{% url 'repick_iafd_result' s.id %}">
+                {% csrf_token %}
+                {% for result in s.iafd_search_results %}
+                <div class="pick-option">
+                  <input type="radio" name="iafd_url" value="{{ result.url }}"
+                         id="r-{{ s.id }}-{{ forloop.counter }}"
+                         {% if result.url == s.iafd_url %}checked{% endif %}>
+                  <label for="r-{{ s.id }}-{{ forloop.counter }}">{{ result.name }}</label>
+                </div>
+                {% endfor %}
+                <button type="submit" class="pick-submit">Re-scrape selected</button>
+              </form>
+            </div>
+          </div>
+          {% endif %}
+        </td>
+        <td>{{ s.date_of_birth|default:"—" }}</td>
+        <td>{{ s.birth_country|default:"—" }}</td>
+        <td>{% if s.height_cm %}{{ s.height_cm }} cm{% else %}—{% endif %}</td>
+        <td>{% if s.weight_kg %}{{ s.weight_kg }} kg{% else %}—{% endif %}</td>
+        <td>
+          {% if s.years_active_start %}
+            {{ s.years_active_start }}–{{ s.years_active_end }}
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          <div class="actions">
+            <form method="post" action="{% url 'approve_staged' s.id %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-approve">Approve</button>
+            </form>
+            <form method="post" action="{% url 'reject_staged' s.id %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-reject">Reject</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr class="empty-row"><td colspan="7">No entries pending review.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+function togglePick(id) {
+  const panel = document.getElementById(id);
+  panel.classList.toggle('open');
+}
+// Spinner: btn is the clicked button, find sibling input by name within same form
+function spin(btn, name, delta) {
+  const form = btn.closest('form');
+  const inp  = form.querySelector(`input[name="${name}"]`);
+  const val  = parseInt(inp.value) + delta;
+  inp.value  = Math.max(parseInt(inp.min), Math.min(parseInt(inp.max), val));
+}
+</script>
+
+
+<!-- ── ERRORS ────────────────────────────────────────────────────────────── -->
+{% if errors %}
+<div class="section-block">
+  <div class="section-block-header">
+    <span class="section-block-title">Scrape errors</span>
+    <div style="display:flex;align-items:center;gap:.75rem;">
+      <span style="font-size:.78rem;color:var(--text-dim);">{{ errors|length }}</span>
+      <form method="post" action="{% url 'clear_staged_errors' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-ghost"
+                style="font-size:.68rem;padding:.3rem .75rem;color:var(--rose);border-color:rgba(196,107,107,.3);"
+                onclick="return confirm('Delete all {{ errors|length }} error entries?')">
+          ✕ Clear all
+        </button>
+      </form>
+    </div>
+  </div>
+  <table class="review-table">
+    <thead>
+      <tr>
+        <th>Query</th>
+        <th>Error</th>
+        <th>Scraped at</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in errors %}
+      <tr>
+        <td style="color:var(--text);">{{ s.query }}</td>
+        <td style="color:var(--rose);font-size:.8rem;">{{ s.error }}</td>
+        <td>{{ s.scraped_at|date:"d M Y H:i" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+
+<!-- ── APPROVED / REJECTED (collapsed summary) ───────────────────────────── -->
+{% if approved_actresses or rejected %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;">
+
+  {% if approved_actresses %}
+  <div class="section-block" style="margin-bottom:0;">
+    <div class="section-block-header">
+      <span class="section-block-title">Approved</span>
+      <span class="badge badge-approved">{{ approved_actresses|length }}</span>
+    </div>
+    <table class="review-table">
+      <thead><tr><th>Name</th><th>Photos</th></tr></thead>
+      <tbody>
+        {% for actress in approved_actresses %}
+        <tr>
+          <td>
+            <a href="{% url 'actress_detail' actress.id %}" style="color:var(--text);">
+              {{ actress.name }}
+            </a>
+          </td>
+          <td>
+            <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+              <form method="post" action="{% url 'scrape_photos_for_actress' actress.id %}"
+                    style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
+                {% csrf_token %}
+                <input type="text" name="search_name" value="{{ actress.name }}"
+                       title="Name to search on PornPics — change if site uses an alias"
+                       style="background:var(--bg-3);border:1px solid var(--border);
+                              border-radius:var(--radius);color:var(--text);
+                              font-family:var(--font-sans);font-size:.72rem;font-weight:300;
+                              padding:.28rem .6rem;width:100px;outline:none;">
+                <div class="spinner-wrap" title="Galleries">
+                  <button type="button" class="spinner-btn" onclick="spin(this,'max_galleries',-1)">−</button>
+                  <input type="number" name="max_galleries" value="10" min="1" max="30" style="width:32px;">
+                  <button type="button" class="spinner-btn" onclick="spin(this,'max_galleries',1)">+</button>
+                </div>
+                <span style="font-size:.65rem;color:var(--text-dim);">×</span>
+                <div class="spinner-wrap" title="Photos per gallery">
+                  <button type="button" class="spinner-btn" onclick="spin(this,'photos_per_gallery',-1)">−</button>
+                  <input type="number" name="photos_per_gallery" value="5" min="1" max="20" style="width:28px;">
+                  <button type="button" class="spinner-btn" onclick="spin(this,'photos_per_gallery',1)">+</button>
+                </div>
+                <button type="submit" class="btn btn-ghost" style="font-size:.68rem;padding:.3rem .75rem;">
+                  ⬇ Scrape
+                </button>
+              </form>
+              {% with pending_count=actress.pending_staged_photos_count %}
+              {% if pending_count %}
+              <a href="{% url 'photo_review' actress.id %}"
+                 class="btn btn-ghost" style="font-size:.68rem;padding:.3rem .75rem;">
+                Review ({{ pending_count }})
+              </a>
+              {% endif %}
+              {% endwith %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if rejected %}
+  <div class="section-block" style="margin-bottom:0;">
+    <div class="section-block-header">
+      <span class="section-block-title">Rejected</span>
+      <span class="badge badge-rejected">{{ rejected|length }}</span>
+    </div>
+    <table class="review-table">
+      <thead><tr><th>Query</th><th>Date</th></tr></thead>
+      <tbody>
+        {% for s in rejected %}
+        <tr>
+          <td style="color:var(--text-dim);">{{ s.query }}</td>
+          <td>{{ s.scraped_at|date:"d M Y" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+</div>
+{% endif %}
+
+{% endblock %}

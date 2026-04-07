@@ -1,0 +1,208 @@
+{% extends 'catalog/index.html' %}
+
+{% block title %}Bulk Import — ActressDB{% endblock %}
+
+{% block extra_styles %}
+
+.import-wrap { max-width: 720px; margin: 0 auto; }
+
+.import-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem 2.5rem;
+}
+
+.import-textarea {
+  width: 100%;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: .9rem;
+  font-weight: 300;
+  line-height: 1.8;
+  padding: .85rem 1rem;
+  resize: vertical;
+  min-height: 200px;
+  outline: none;
+  transition: border-color var(--transition);
+}
+.import-textarea::placeholder { color: var(--text-dim); }
+.import-textarea:focus { border-color: var(--gold-dim); }
+
+/* Progress section */
+.progress-section { display: none; margin-top: 1.5rem; }
+
+.progress-track {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+  margin-bottom: .75rem;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 999px;
+  width: 0%;
+  transition: width 400ms ease;
+}
+
+.progress-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: .78rem;
+  color: var(--text-dim);
+  margin-bottom: 1rem;
+}
+.progress-meta strong { color: var(--text); }
+
+/* Log list */
+.import-log {
+  list-style: none;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .75rem 1rem;
+  font-size: .82rem;
+  line-height: 1.8;
+}
+.import-log li { display: flex; align-items: baseline; gap: .5rem; }
+.log-ok   { color: #6bc47a; flex-shrink: 0; }
+.log-err  { color: var(--rose); flex-shrink: 0; }
+.log-name { color: var(--text); }
+.log-sub  { color: var(--text-dim); font-size: .75rem; }
+
+{% endblock %}
+
+{% block content %}
+
+<div class="import-wrap">
+
+  <div style="margin-bottom:2.5rem;">
+    <h1>Bulk Import</h1>
+    <p style="margin-top:.5rem;color:var(--text-dim);font-size:.9rem;">
+      Enter one name per line. Each is scraped from IAFD then sent to your review queue.
+    </p>
+  </div>
+
+  <div class="import-card">
+    <div style="margin-bottom:1.5rem;">
+      <label class="form-label" for="names">Names — one per line</label>
+      <textarea id="names" class="import-textarea"
+                placeholder="Lisa Ann&#10;Asa Akira&#10;Jenna Jameson&#10;..."
+                autofocus></textarea>
+      <p style="font-size:.75rem;color:var(--text-dim);margin-top:.5rem;">
+        ~12 seconds per name. The import runs name by name so you can see progress live.
+      </p>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:1rem;">
+      <button id="startBtn" class="btn btn-primary" onclick="startImport()">
+        Start Import
+      </button>
+      <a href="{% url 'staged_review' %}" class="btn btn-ghost">Review Queue</a>
+    </div>
+
+    <!-- Progress UI (hidden until started) -->
+    <div class="progress-section" id="progressSection">
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-meta">
+        <span><strong id="doneCount">0</strong> / <strong id="totalCount">0</strong> processed</span>
+        <span id="currentName" style="color:var(--text-mid);"></span>
+        <span id="etaText"></span>
+      </div>
+      <ul class="import-log" id="importLog"></ul>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const CSRF = () => document.cookie.split('; ').find(r=>r.startsWith('csrftoken='))?.split('=')[1]||'';
+
+async function startImport() {
+  const raw   = document.getElementById('names').value;
+  const names = raw.split('\n').map(n => n.trim()).filter(Boolean);
+
+  if (!names.length) { alert('Please enter at least one name.'); return; }
+
+  // Lock UI and show progress
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('names').disabled    = true;
+  document.getElementById('progressSection').style.display = 'block';
+  document.getElementById('totalCount').textContent = names.length;
+
+  const log    = document.getElementById('importLog');
+  const fill   = document.getElementById('progressFill');
+  const done   = document.getElementById('doneCount');
+  const cur    = document.getElementById('currentName');
+  const eta    = document.getElementById('etaText');
+
+  let processed = 0;
+  const startTs = Date.now();
+
+  for (const name of names) {
+    cur.textContent = name;
+
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF());
+    fd.append('name', name);
+
+    try {
+      const r    = await fetch('{% url "import_process_one" %}', {method: 'POST', body: fd});
+      const data = await r.json();
+      processed++;
+
+      // Progress bar
+      const pct = Math.round(processed / names.length * 100);
+      fill.style.width = pct + '%';
+      done.textContent = processed;
+
+      // ETA
+      const elapsed = (Date.now() - startTs) / 1000;
+      const remaining = names.length - processed;
+      const perItem = elapsed / processed;
+      const etaSecs = Math.round(remaining * perItem);
+      eta.textContent = remaining > 0 ? `~${etaSecs}s remaining` : 'Done';
+
+      // Log entry
+      const li = document.createElement('li');
+      if (data.ok) {
+        const diff = data.scraped_name !== name
+          ? ` <span class="log-sub">→ ${data.scraped_name}</span>` : '';
+        const alt  = data.alternatives > 0
+          ? ` <span class="log-sub">(${data.alternatives} alternative${data.alternatives > 1 ? 's' : ''} available)</span>` : '';
+        li.innerHTML = `<span class="log-ok">✓</span><span class="log-name">${name}</span>${diff}${alt}`;
+      } else if (data.duplicate) {
+        li.innerHTML = `<span style="color:var(--gold);flex-shrink:0;">⚠</span><span class="log-name">${name}</span><span class="log-sub" style="color:var(--gold);">— already in collection</span>`;
+      } else {
+        li.innerHTML = `<span class="log-err">✗</span><span class="log-name">${name}</span><span class="log-sub">— ${data.error}</span>`;
+      }
+      log.appendChild(li);
+      log.scrollTop = log.scrollHeight;
+
+    } catch (err) {
+      processed++;
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="log-err">✗</span><span class="log-name">${name}</span><span class="log-sub">— Network error</span>`;
+      log.appendChild(li);
+    }
+  }
+
+  cur.textContent = 'Complete';
+  eta.textContent = '';
+
+  // Redirect after short pause
+  setTimeout(() => { window.location = '{% url "staged_review" %}'; }, 1800);
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,566 @@
+{% extends 'catalog/index.html' %}
+
+{% block title %}Photo Review — {{ actress.name }} — ActressDB{% endblock %}
+
+{% block extra_styles %}
+
+.review-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* ── Sticky bulk bar ────────────────────────────────────────────────── */
+.bulk-bar {
+  position: sticky;
+  top: 60px;
+  z-index: 50;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: .65rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+.bulk-bar.active { border-color: var(--gold-dim); box-shadow: 0 4px 24px rgba(0,0,0,.4); }
+.bulk-count { font-size: .8rem; color: var(--text-dim); flex: 1; min-width: 80px; }
+.bulk-count strong { color: var(--text); }
+
+/* ── Gallery ────────────────────────────────────────────────────────── */
+.gallery-section { margin-bottom: 3rem; }
+
+.gallery-header {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  margin-bottom: 1rem;
+  padding-bottom: .65rem;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.gallery-title-text {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--text-mid);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gallery-link {
+  font-size: .68rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-dim); border-bottom: 1px solid var(--border);
+  padding-bottom: 1px; flex-shrink: 0;
+  transition: color var(--transition), border-color var(--transition);
+}
+.gallery-link:hover { color: var(--gold); border-color: var(--gold-dim); }
+
+.gallery-select-label {
+  display: flex; align-items: center; gap: .35rem;
+  font-size: .68rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-dim); cursor: pointer; flex-shrink: 0;
+}
+.gallery-select-label input { accent-color: var(--gold); cursor: pointer; }
+
+/* ── Photo grid — natural aspect ratio ──────────────────────────────── */
+.staged-photo-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .85rem;
+  align-items: flex-start;
+}
+
+.staged-photo-item {
+  position: relative;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-2);
+  max-width: 260px;
+  flex-shrink: 0;
+  transition: border-color 200ms ease;
+}
+.staged-photo-item:hover { border-color: var(--gold-dim); }
+.staged-photo-item.selected { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+.staged-photo-item.done { opacity: .5; pointer-events: none; }
+
+.staged-photo-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 360px;
+  object-fit: contain;
+  background: var(--bg-3);
+  cursor: zoom-in;
+}
+
+/* Checkbox */
+.cb-wrap {
+  position: absolute; top: .5rem; left: .5rem; z-index: 2;
+  opacity: 0; transition: opacity 160ms;
+}
+.staged-photo-item:hover .cb-wrap,
+.staged-photo-item.selected .cb-wrap { opacity: 1; }
+.cb-wrap input { width: 18px; height: 18px; accent-color: var(--gold); cursor: pointer; }
+
+/* Status badge */
+.status-badge {
+  position: absolute; top: .5rem; right: .5rem;
+  font-size: .6rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+  padding: .18rem .5rem; border-radius: 999px; pointer-events: none;
+}
+.status-badge.kept     { background: rgba(107,196,122,.25); color: #6bc47a; }
+.status-badge.skipped  { background: rgba(196,107,107,.25); color: var(--rose); }
+
+/* Action buttons */
+.photo-actions {
+  display: flex; gap: .4rem; padding: .5rem;
+  background: rgba(0,0,0,.25);
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────── */
+.btn-keep {
+  flex: 1;
+  background: rgba(107,196,122,.12); color: #6bc47a;
+  border: 1px solid rgba(107,196,122,.28);
+  font-family: var(--font-sans); font-size: .68rem; font-weight: 500;
+  letter-spacing: .08em; text-transform: uppercase;
+  padding: .38rem; border-radius: var(--radius); cursor: pointer;
+  transition: background var(--transition);
+}
+.btn-keep:hover { background: rgba(107,196,122,.22); }
+
+.btn-skip {
+  flex: 1;
+  background: rgba(196,107,107,.10); color: var(--rose);
+  border: 1px solid rgba(196,107,107,.25);
+  font-family: var(--font-sans); font-size: .68rem; font-weight: 500;
+  letter-spacing: .08em; text-transform: uppercase;
+  padding: .38rem; border-radius: var(--radius); cursor: pointer;
+  transition: background var(--transition);
+}
+.btn-skip:hover { background: rgba(196,107,107,.20); }
+
+.btn-bulk {
+  font-family: var(--font-sans); font-size: .73rem; font-weight: 500;
+  letter-spacing: .08em; text-transform: uppercase;
+  padding: .42rem 1rem; border-radius: var(--radius); cursor: pointer;
+  transition: background var(--transition);
+}
+.btn-bulk:disabled { opacity: .3; cursor: default; }
+.btn-bulk-keep {
+  background: rgba(107,196,122,.14); color: #6bc47a;
+  border: 1px solid rgba(107,196,122,.3);
+}
+.btn-bulk-keep:not(:disabled):hover { background: rgba(107,196,122,.24); }
+.btn-bulk-skip {
+  background: rgba(196,107,107,.12); color: var(--rose);
+  border: 1px solid rgba(196,107,107,.28);
+}
+.btn-bulk-skip:not(:disabled):hover { background: rgba(196,107,107,.22); }
+.btn-sm-ghost {
+  font-family: var(--font-sans); font-size: .7rem; font-weight: 500;
+  letter-spacing: .08em; text-transform: uppercase;
+  padding: .38rem .85rem; border-radius: var(--radius); cursor: pointer;
+  background: transparent; color: var(--text-dim); border: 1px solid var(--border);
+  transition: color var(--transition), border-color var(--transition);
+}
+.btn-sm-ghost:hover { color: var(--text); border-color: #4a4a50; }
+
+/* ── Summaries ───────────────────────────────────────────────────────── */
+.summary-section {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 2rem;
+}
+.summary-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .85rem 1.25rem; border-bottom: 1px solid var(--border);
+}
+.summary-label {
+  font-size: .68rem; font-weight: 500; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--text-dim);
+}
+.summary-strip {
+  display: flex; flex-wrap: wrap; gap: .5rem; padding: .75rem;
+}
+.summary-thumb {
+  height: 88px; border-radius: var(--radius); overflow: hidden; background: var(--bg-3);
+}
+.summary-thumb img { height: 100%; width: auto; object-fit: contain; display: block; }
+.badge {
+  display: inline-block; font-size: .65rem; font-weight: 500;
+  letter-spacing: .08em; text-transform: uppercase;
+  padding: .2rem .55rem; border-radius: 999px;
+}
+.badge-ok  { background: rgba(107,196,122,.12); color: #6bc47a; border: 1px solid rgba(107,196,122,.25); }
+.badge-no  { background: rgba(196,107,107,.12); color: var(--rose); border: 1px solid rgba(196,107,107,.25); }
+
+/* ── Lightbox ────────────────────────────────────────────────────────── */
+#lb {
+  display: none; position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,.94);
+  align-items: center; justify-content: center;
+}
+#lb.open { display: flex; }
+#lb img {
+  max-width: 90vw; max-height: 90vh;
+  object-fit: contain; border-radius: var(--radius);
+  user-select: none;
+}
+.lb-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+  color: var(--text-mid); width: 48px; height: 48px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; line-height: 1;
+  cursor: pointer; user-select: none;
+  transition: background var(--transition), color var(--transition);
+}
+.lb-arrow:hover { background: rgba(255,255,255,.16); color: var(--text); }
+#lbPrev { left: 1.25rem; }
+#lbNext { right: 1.25rem; }
+#lbClose {
+  position: absolute; top: 1.25rem; right: 1.5rem;
+  color: var(--text-dim); font-size: 1.5rem; cursor: pointer; line-height: 1;
+  transition: color var(--transition);
+}
+#lbClose:hover { color: var(--text); }
+#lbCounter {
+  position: absolute; bottom: 1.25rem; left: 50%; transform: translateX(-50%);
+  font-size: .73rem; color: var(--text-dim);
+  background: rgba(0,0,0,.55); padding: .22rem .7rem; border-radius: 999px;
+}
+
+.empty-block { text-align: center; padding: 4rem 2rem; color: var(--text-dim); }
+
+{% endblock %}
+
+{% block content %}
+
+<div class="review-header">
+  <div>
+    <a href="{% url 'actress_detail' actress.id %}"
+       style="display:inline-flex;align-items:center;gap:.4rem;font-size:.75rem;font-weight:500;
+              letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:1rem;
+              transition:color var(--transition);"
+       onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text-dim)'">
+      ← {{ actress.name }}
+    </a>
+    <h1>Photo Review</h1>
+    <p style="margin-top:.4rem;color:var(--text-dim);font-size:.9rem;">
+      {{ total_pending }} photo{{ total_pending|pluralize }} pending
+    </p>
+  </div>
+  <form method="post" action="{% url 'scrape_photos_for_actress' actress.id %}">
+    {% csrf_token %}
+    <input type="hidden" name="search_name" value="{{ actress.name }}">
+    <button type="submit" class="btn btn-ghost"
+            onclick="return confirm('Replace all pending photos with a fresh scrape?')">
+      ↻ Re-scrape
+    </button>
+  </form>
+</div>
+
+<!-- ── Sticky bulk action bar ─────────────────────────────────────────────── -->
+<div class="bulk-bar" id="bulkBar">
+  <span class="bulk-count"><strong id="selCount">0</strong> selected</span>
+  <button class="btn-bulk btn-bulk-keep" id="btnBulkKeep" disabled onclick="bulkAction('keep')">
+    ✓ Keep selected
+  </button>
+  <button class="btn-bulk btn-bulk-skip" id="btnBulkSkip" disabled onclick="bulkAction('skip')">
+    ✕ Skip selected
+  </button>
+  <button class="btn-sm-ghost" onclick="selectAll(true)">Select all</button>
+  <button class="btn-sm-ghost" onclick="selectAll(false)">Clear</button>
+</div>
+
+
+{% if galleries %}
+  {% for gallery in galleries %}
+  <div class="gallery-section">
+    <div class="gallery-header">
+      <span class="gallery-title-text">{{ gallery.title }}</span>
+      {% if gallery.url %}
+        <a href="{{ gallery.url }}" target="_blank" rel="noopener" class="gallery-link">View ↗</a>
+      {% endif %}
+      <label class="gallery-select-label">
+        <input type="checkbox" onchange="toggleGallery(this, '{{ gallery.url|escapejs }}')">
+        Select gallery
+      </label>
+      <button class="btn-skip" style="padding:.3rem .75rem;font-size:.68rem;border-radius:var(--radius);flex-shrink:0;"
+              onclick="skipGallery('{{ gallery.url|escapejs }}')">✕ Skip all</button>
+      <button class="btn-sm-ghost" style="flex-shrink:0;color:var(--gold);border-color:var(--gold-dim);"
+              onclick="getFullAlbum('{{ gallery.url|escapejs }}', '{{ gallery.title|escapejs }}', this)">
+        ↓ Full album
+      </button>
+    </div>
+
+    <div class="staged-photo-grid">
+      {% for photo in gallery.photos %}
+      <div class="staged-photo-item"
+           id="sp-{{ photo.id }}"
+           data-id="{{ photo.id }}"
+           data-gallery="{{ gallery.url }}"
+           data-approve-url="{% url 'approve_photo' photo.id %}"
+           data-reject-url="{% url 'reject_photo' photo.id %}">
+
+        <div class="cb-wrap">
+          <input type="checkbox" data-id="{{ photo.id }}"
+                 onchange="onCheck(this)" onclick="event.stopPropagation()">
+        </div>
+
+        {% if photo.local_file %}
+        <img class="staged-photo-img"
+             src="{{ photo.local_file.url }}"
+             alt="{{ gallery.title }}"
+             onclick="lbOpen({{ forloop.counter0 }}, '{{ gallery.url|escapejs }}')"
+             loading="lazy">
+        {% else %}
+        <div style="width:200px;height:200px;display:flex;align-items:center;justify-content:center;color:var(--border);">?</div>
+        {% endif %}
+
+        {% if photo.is_duplicate %}
+        <div style="position:absolute;top:.45rem;right:.45rem;z-index:3;
+                    background:rgba(196,107,107,.85);color:#fff;
+                    font-size:.58rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+                    padding:.18rem .5rem;border-radius:999px;pointer-events:none;">
+          Already in collection
+        </div>
+        {% endif %}
+
+        <div class="photo-actions">
+          <button class="btn-keep" onclick="doSingle('keep', {{ photo.id }})">✓ Keep</button>
+          <button class="btn-skip" onclick="doSingle('skip', {{ photo.id }})">✕ Skip</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="empty-block"><p>No photos pending review.</p></div>
+{% endif %}
+
+
+{% if approved %}
+<div class="summary-section">
+  <div class="summary-header">
+    <span class="summary-label">Approved — added to collection</span>
+    <span class="badge badge-ok">{{ approved|length }}</span>
+  </div>
+  <div class="summary-strip">
+    {% for photo in approved %}{% if photo.local_file %}
+    <div class="summary-thumb"><img src="{{ photo.local_file.url }}" alt=""></div>
+    {% endif %}{% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if rejected %}
+<div class="summary-section">
+  <div class="summary-header">
+    <span class="summary-label">Skipped</span>
+    <span class="badge badge-no">{{ rejected|length }}</span>
+  </div>
+</div>
+{% endif %}
+
+
+<!-- Lightbox -->
+<div id="lb" onclick="if(event.target===this)lbClose()">
+  <span id="lbClose" onclick="lbClose()">✕</span>
+  <span class="lb-arrow" id="lbPrev" onclick="lbStep(-1);event.stopPropagation()">‹</span>
+  <img id="lbImg" src="" alt="" onclick="event.stopPropagation()">
+  <span class="lb-arrow" id="lbNext" onclick="lbStep(1);event.stopPropagation()">›</span>
+  <span id="lbCounter"></span>
+</div>
+
+<script>
+const CSRF = () => document.cookie.split('; ').find(r=>r.startsWith('csrftoken='))?.split('=')[1]||'';
+
+async function post(url, data={}) {
+  const fd = new FormData();
+  fd.append('csrfmiddlewaretoken', CSRF());
+  for (const [k,v] of Object.entries(data)) {
+    if (Array.isArray(v)) v.forEach(x => fd.append(k, x));
+    else fd.append(k, v);
+  }
+  const r = await fetch(url, {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd});
+  return r.json();
+}
+
+// ── Mark item as done in DOM ─────────────────────────────────────────────────
+function markDone(id, state) {
+  const el = document.getElementById(`sp-${id}`);
+  if (!el) return;
+  el.classList.add('done', 'selected');
+  el.querySelector('.cb-wrap')?.remove();
+  el.querySelector('.photo-actions')?.remove();
+  const badge = document.createElement('div');
+  badge.className = `status-badge ${state === 'keep' ? 'kept' : 'skipped'}`;
+  badge.textContent = state === 'keep' ? '✓ Kept' : '✕ Skipped';
+  el.appendChild(badge);
+  // Uncheck from selection pool
+  const cb = el.querySelector('input[type=checkbox]');
+  if (cb) cb.checked = false;
+}
+
+// ── Single action ────────────────────────────────────────────────────────────
+async function doSingle(state, id) {
+  const el  = document.getElementById(`sp-${id}`);
+  const url = state === 'keep' ? el.dataset.approveUrl : el.dataset.rejectUrl;
+  const res = await post(url);
+  if (res.ok) markDone(id, state);
+  refreshBar();
+}
+
+// ── Bulk action ──────────────────────────────────────────────────────────────
+async function bulkAction(state) {
+  const ids = getSelected();
+  if (!ids.length) return;
+  const url = state === 'keep'
+    ? '{% url "bulk_approve_staged_photos" %}'
+    : '{% url "bulk_reject_staged_photos" %}';
+  const res = await post(url, {'photo_ids[]': ids});
+  if (res.ok) {
+    ids.forEach(id => markDone(id, state));
+    if (state === 'keep' && res.skipped_dupes > 0) {
+      showToast(`${res.approved} added · ${res.skipped_dupes} duplicate${res.skipped_dupes > 1 ? 's' : ''} skipped`);
+    }
+  }
+  refreshBar();
+}
+
+function showToast(msg) {
+  let t = document.getElementById('_toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '_toast';
+    t.style.cssText = 'position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);' +
+      'background:var(--bg-2);border:1px solid var(--border);color:var(--text-mid);' +
+      'font-size:.8rem;padding:.6rem 1.25rem;border-radius:var(--radius-lg);z-index:9999;' +
+      'transition:opacity 400ms ease;pointer-events:none;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity = '0'; }, 3000);
+}
+
+async function skipGallery(galleryUrl) {
+  const els = [...document.querySelectorAll(`.staged-photo-item[data-gallery="${CSS.escape(galleryUrl)}"]`)]
+    .filter(el => !el.classList.contains('done'));
+  const ids = els.map(el => el.dataset.id);
+  if (!ids.length) return;
+  const res = await post('{% url "bulk_reject_staged_photos" %}', {'photo_ids[]': ids});
+  if (res.ok) ids.forEach(id => markDone(id, 'skip'));
+  refreshBar();
+}
+
+async function getFullAlbum(galleryUrl, galleryTitle, btn) {
+  btn.disabled    = true;
+  btn.textContent = '↓ Loading…';
+
+  const fd = new FormData();
+  fd.append('csrfmiddlewaretoken', CSRF());
+  fd.append('gallery_url', galleryUrl);
+  fd.append('gallery_title', galleryTitle);
+
+  try {
+    const r   = await fetch('{% url "scrape_full_album" actress.id %}', {method:'POST', body:fd});
+    const res = await r.json();
+    if (res.ok) {
+      btn.textContent = `✓ ${res.added} added`;
+      // Reload to show newly staged photos
+      setTimeout(() => window.location.reload(), 800);
+    } else {
+      btn.textContent = 'Error';
+      btn.disabled    = false;
+    }
+  } catch {
+    btn.textContent = 'Error';
+    btn.disabled    = false;
+  }
+}
+
+// ── Selection ────────────────────────────────────────────────────────────────
+function getSelected() {
+  return [...document.querySelectorAll('.cb-wrap input:checked')].map(cb => cb.dataset.id);
+}
+function onCheck(cb) {
+  cb.closest('.staged-photo-item').classList.toggle('selected', cb.checked);
+  refreshBar();
+}
+function toggleGallery(masterCb, galleryUrl) {
+  document.querySelectorAll(`.staged-photo-item[data-gallery="${CSS.escape(galleryUrl)}"] .cb-wrap input`)
+    .forEach(cb => {
+      if (cb.closest('.staged-photo-item').classList.contains('done')) return;
+      cb.checked = masterCb.checked;
+      cb.closest('.staged-photo-item').classList.toggle('selected', masterCb.checked);
+    });
+  refreshBar();
+}
+function selectAll(checked) {
+  document.querySelectorAll('.cb-wrap input').forEach(cb => {
+    if (cb.closest('.staged-photo-item').classList.contains('done')) return;
+    cb.checked = checked;
+    cb.closest('.staged-photo-item').classList.toggle('selected', checked);
+  });
+  refreshBar();
+}
+function refreshBar() {
+  const n = getSelected().length;
+  document.getElementById('selCount').textContent = n;
+  document.getElementById('bulkBar').classList.toggle('active', n > 0);
+  document.getElementById('btnBulkKeep').disabled = n === 0;
+  document.getElementById('btnBulkSkip').disabled = n === 0;
+}
+
+// ── Lightbox ─────────────────────────────────────────────────────────────────
+let _lbGallery = null, _lbIdx = 0;
+
+function lbImgs(galleryUrl) {
+  return [...document.querySelectorAll(`.staged-photo-img`)].filter(img => {
+    const item = img.closest('.staged-photo-item');
+    return item && item.dataset.gallery === galleryUrl;
+  });
+}
+
+function lbOpen(idx, galleryUrl) {
+  _lbGallery = galleryUrl;
+  _lbIdx     = idx;
+  lbShow();
+}
+function lbShow() {
+  const imgs = lbImgs(_lbGallery);
+  if (!imgs.length) return lbClose();
+  _lbIdx = Math.max(0, Math.min(_lbIdx, imgs.length - 1));
+  document.getElementById('lbImg').src = imgs[_lbIdx].src;
+  document.getElementById('lbCounter').textContent = `${_lbIdx + 1} / ${imgs.length}`;
+  document.getElementById('lb').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function lbStep(d) { const imgs = lbImgs(_lbGallery); _lbIdx = (_lbIdx + d + imgs.length) % imgs.length; lbShow(); }
+function lbClose() { document.getElementById('lb').classList.remove('open'); document.body.style.overflow = ''; }
+
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('lb').classList.contains('open')) return;
+  if (e.key === 'ArrowLeft')  lbStep(-1);
+  if (e.key === 'ArrowRight') lbStep(1);
+  if (e.key === 'Escape')     lbClose();
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,278 @@
+{% extends 'catalog/index.html' %}
+
+{% block title %}Rescrape IAFD — ActressDB{% endblock %}
+
+{% block extra_styles %}
+
+.rescrape-wrap { max-width: 820px; margin: 0 auto; }
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: .6rem;
+  margin-bottom: 1.5rem;
+}
+
+.field-check {
+  display: flex; align-items: center; gap: .5rem;
+  background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: .6rem .9rem;
+  cursor: pointer; transition: border-color var(--transition);
+  font-size: .85rem; color: var(--text-mid);
+}
+.field-check:hover { border-color: var(--gold-dim); }
+.field-check input { accent-color: var(--gold); cursor: pointer; }
+.field-check.active { border-color: var(--gold-dim); color: var(--text); }
+
+.actress-select-wrap {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1.5rem;
+}
+
+.actress-select-header {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .85rem 1.25rem; border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.actress-select-list {
+  max-height: 340px; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+
+.actress-row {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .55rem 1.25rem; border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background var(--transition);
+  font-size: .88rem; color: var(--text-mid);
+}
+.actress-row:last-child { border-bottom: none; }
+.actress-row:hover { background: var(--bg-3); }
+.actress-row input { accent-color: var(--gold); cursor: pointer; flex-shrink: 0; }
+.actress-row .nat { font-size: .72rem; color: var(--text-dim); margin-left: auto; }
+
+/* Progress section */
+.task-progress-wrap {
+  display: none;
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+.task-bar-track {
+  background: var(--bg-3); border-radius: 999px; height: 8px;
+  overflow: hidden; margin-bottom: .65rem;
+}
+.task-bar-fill {
+  height: 100%; background: var(--gold); border-radius: 999px;
+  width: 0%; transition: width 500ms ease;
+}
+.task-log {
+  max-height: 180px; overflow-y: auto;
+  font-size: .78rem; color: var(--text-dim);
+  line-height: 1.7; margin-top: .5rem;
+  scrollbar-width: thin;
+}
+
+{% endblock %}
+
+{% block content %}
+
+<div class="rescrape-wrap">
+
+  <div style="margin-bottom:2.5rem;">
+    <a href="{% url 'actress_list' %}" style="font-size:.75rem;font-weight:500;letter-spacing:.1em;
+       text-transform:uppercase;color:var(--text-dim);transition:color var(--transition);"
+       onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text-dim)'">
+      ← Collection
+    </a>
+    <h1 style="margin-top:1rem;">Rescrape IAFD Data</h1>
+    <p style="margin-top:.5rem;color:var(--text-dim);font-size:.9rem;">
+      Choose which actresses to update and which fields to pull from IAFD. Runs in the background — you can navigate away.
+    </p>
+  </div>
+
+  <!-- Field selection -->
+  <div style="margin-bottom:1.75rem;">
+    <div style="font-size:.7rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
+                color:var(--text-dim);margin-bottom:.85rem;">Fields to update</div>
+    <div class="field-grid">
+      {% for field, label in fields_choices %}
+      <label class="field-check" id="fc-{{ field }}">
+        <input type="checkbox" name="field" value="{{ field }}" checked
+               onchange="this.closest('.field-check').classList.toggle('active', this.checked)">
+        {{ label }}
+      </label>
+      {% endfor %}
+    </div>
+    <div style="display:flex;gap:.75rem;">
+      <button class="btn btn-ghost" style="font-size:.72rem;padding:.35rem .8rem;"
+              onclick="setAllFields(true)">Check all</button>
+      <button class="btn btn-ghost" style="font-size:.72rem;padding:.35rem .8rem;"
+              onclick="setAllFields(false)">Uncheck all</button>
+    </div>
+  </div>
+
+  <!-- Actress selection -->
+  <div class="actress-select-wrap">
+    <div class="actress-select-header">
+      <span style="font-size:.7rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);">
+        Actresses
+      </span>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--text-mid);cursor:pointer;">
+        <input type="checkbox" id="selectAllActresses" checked accent-color="var(--gold)"
+               onchange="setAllActresses(this.checked)">
+        All ({{ actresses|length }})
+      </label>
+      <input type="text" placeholder="Filter…" oninput="filterActresses(this.value)"
+             style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--radius);
+                    color:var(--text);font-family:var(--font-sans);font-size:.78rem;padding:.3rem .65rem;
+                    outline:none;width:160px;"
+             onfocus="this.style.borderColor='var(--gold-dim)'"
+             onblur="this.style.borderColor='var(--border)'">
+      <span id="selCount" style="font-size:.75rem;color:var(--text-dim);margin-left:auto;">
+        {{ actresses|length }} selected
+      </span>
+    </div>
+    <div class="actress-select-list" id="actressList">
+      {% for actress in actresses %}
+      <label class="actress-row" data-name="{{ actress.name|lower }}">
+        <input type="checkbox" class="actress-cb" value="{{ actress.id }}" checked
+               onchange="updateSelCount()">
+        <span>{{ actress.name }}</span>
+        <span class="nat">{{ actress.nationality }}{% if actress.nationality and actress.birth_country %} · {% endif %}{{ actress.birth_country }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Start button -->
+  <div style="display:flex;align-items:center;gap:1rem;">
+    <button class="btn btn-primary" onclick="startRescrape()" id="startBtn">
+      ↻ Start Rescrape
+    </button>
+    <span id="startHint" style="font-size:.8rem;color:var(--text-dim);">
+      Runs in background — ~12s per actress
+    </span>
+  </div>
+
+  <!-- Progress panel -->
+  <div class="task-progress-wrap" id="progressWrap">
+    <div style="display:flex;justify-content:space-between;margin-bottom:.6rem;font-size:.78rem;">
+      <strong id="taskLabel" style="color:var(--text);">Rescraping…</strong>
+      <span id="taskPct" style="color:var(--text-dim);">0%</span>
+    </div>
+    <div class="task-bar-track">
+      <div class="task-bar-fill" id="taskBarFill"></div>
+    </div>
+    <div class="task-log" id="taskLog"></div>
+    <div id="taskDone" style="display:none;margin-top:.75rem;color:#6bc47a;font-size:.85rem;font-weight:500;">
+      ✓ Rescrape complete
+    </div>
+  </div>
+
+</div>
+
+<script>
+const CSRF = () => document.cookie.split('; ').find(r=>r.startsWith('csrftoken='))?.split('=')[1]||'';
+
+// ── Field helpers ─────────────────────────────────────────────────────────────
+function setAllFields(checked) {
+  document.querySelectorAll('input[name=field]').forEach(cb => {
+    cb.checked = checked;
+    cb.closest('.field-check').classList.toggle('active', checked);
+  });
+}
+document.querySelectorAll('input[name=field]').forEach(cb => {
+  cb.closest('.field-check').classList.toggle('active', cb.checked);
+});
+
+// ── Actress helpers ───────────────────────────────────────────────────────────
+function setAllActresses(checked) {
+  document.querySelectorAll('.actress-cb').forEach(cb => {
+    const row = cb.closest('.actress-row');
+    if (row.style.display !== 'none') cb.checked = checked;
+  });
+  updateSelCount();
+}
+
+function filterActresses(q) {
+  const lq = q.toLowerCase();
+  document.querySelectorAll('.actress-row').forEach(row => {
+    row.style.display = row.dataset.name.includes(lq) ? '' : 'none';
+  });
+  updateSelCount();
+}
+
+function updateSelCount() {
+  const n = document.querySelectorAll('.actress-cb:checked').length;
+  document.getElementById('selCount').textContent = `${n} selected`;
+  const all = document.querySelectorAll('.actress-cb').length;
+  document.getElementById('selectAllActresses').checked = n === all;
+}
+
+// ── Start rescrape ────────────────────────────────────────────────────────────
+async function startRescrape() {
+  const actressIds = [...document.querySelectorAll('.actress-cb:checked')].map(cb => cb.value);
+  const fields     = [...document.querySelectorAll('input[name=field]:checked')].map(cb => cb.value);
+
+  if (!actressIds.length) { alert('Select at least one actress.'); return; }
+  if (!fields.length)     { alert('Select at least one field.'); return; }
+
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('progressWrap').style.display = 'block';
+
+  const fd = new FormData();
+  fd.append('csrfmiddlewaretoken', CSRF());
+  actressIds.forEach(id => fd.append('actress_ids[]', id));
+  fields.forEach(f => fd.append('fields[]', f));
+
+  const r    = await fetch('{% url "rescrape_start" %}', { method: 'POST', body: fd });
+  const data = await r.json();
+
+  if (!data.ok) {
+    document.getElementById('taskLog').textContent = 'Error starting task.';
+    return;
+  }
+
+  pollTask(data.task_id);
+}
+
+// ── Poll task status ──────────────────────────────────────────────────────────
+let _lastMsg = '';
+
+async function pollTask(taskId) {
+  const fill    = document.getElementById('taskBarFill');
+  const pctEl   = document.getElementById('taskPct');
+  const logEl   = document.getElementById('taskLog');
+  const labelEl = document.getElementById('taskLabel');
+
+  const r    = await fetch(`/tasks/${taskId}/status/`);
+  const data = await r.json();
+
+  fill.style.width = data.pct + '%';
+  pctEl.textContent = data.pct + '%';
+  labelEl.textContent = data.label || 'Rescraping…';
+
+  if (data.message && data.message !== _lastMsg) {
+    _lastMsg = data.message;
+    const line = document.createElement('div');
+    line.textContent = data.message;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  if (data.status === 'done') {
+    fill.style.width = '100%';
+    pctEl.textContent = '100%';
+    document.getElementById('taskDone').style.display = 'block';
+    document.getElementById('startBtn').disabled = false;
+  } else if (data.status === 'error') {
+    logEl.innerHTML += `<div style="color:var(--rose);">Error: ${data.error}</div>`;
+    document.getElementById('startBtn').disabled = false;
+  } else {
+    setTimeout(() => pollTask(taskId), 2000);
+  }
+}
+</script>
+
+{% endblock %}

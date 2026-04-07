@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}ActressDB{% endblock %}</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* ── Design tokens ──────────────────────────────────────────────────── */
+    :root {
+      --bg:          #0e0e10;
+      --bg-2:        #141416;
+      --bg-3:        #1c1c1f;
+      --border:      #2a2a2e;
+      --gold:        #c8a45a;
+      --gold-dim:    #7a6035;
+      --text:        #e8e6df;
+      --text-dim:    #7a7870;
+      --text-mid:    #aea99f;
+      --rose:        #c46b6b;
+      --font-serif:  'Cormorant Garamond', Georgia, serif;
+      --font-sans:   'Outfit', system-ui, sans-serif;
+      --radius:      6px;
+      --radius-lg:   12px;
+      --transition:  200ms ease;
+    }
+
+    /* ── Reset & base ───────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-weight: 300;
+      font-size: 15px;
+      line-height: 1.65;
+      min-height: 100vh;
+    }
+
+    /* Subtle grain overlay */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: .4;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    img { display: block; max-width: 100%; }
+
+    /* ── Navbar ─────────────────────────────────────────────────────────── */
+    .navbar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(14, 14, 16, .92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 clamp(1.5rem, 4vw, 3rem);
+      height: 60px;
+    }
+
+    .navbar-brand {
+      font-family: var(--font-serif);
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      color: var(--gold);
+    }
+
+    .navbar-brand span {
+      color: var(--text-dim);
+      font-weight: 300;
+    }
+
+    .navbar-links {
+      display: flex; gap: 2rem;
+      font-size: .8rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text-mid);
+    }
+
+    .navbar-links a:hover { color: var(--gold); transition: color var(--transition); }
+
+    .navbar-links a.active { color: var(--gold); }
+
+    /* ── Page wrapper ───────────────────────────────────────────────────── */
+    .page {
+      max-width: 1340px;
+      margin: 0 auto;
+      padding: clamp(2rem, 4vw, 3.5rem) clamp(1.25rem, 4vw, 2.5rem);
+    }
+
+    /* ── Typography ─────────────────────────────────────────────────────── */
+    .serif { font-family: var(--font-serif); }
+
+    h1, .h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(2.2rem, 5vw, 3.5rem);
+      font-weight: 300;
+      letter-spacing: .02em;
+      line-height: 1.15;
+      color: var(--text);
+    }
+
+    h2, .h2 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      font-weight: 400;
+    }
+
+    h3, .h3 {
+      font-family: var(--font-sans);
+      font-size: .7rem;
+      font-weight: 500;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .gold { color: var(--gold); }
+    .dim  { color: var(--text-dim); }
+    .mid  { color: var(--text-mid); }
+
+    /* ── Divider ────────────────────────────────────────────────────────── */
+    .rule {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 2.5rem 0;
+    }
+
+    /* ── Cards ──────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .card-body { padding: 1.25rem; }
+
+    /* ── Buttons ────────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      font-family: var(--font-sans);
+      font-size: .78rem;
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: .55rem 1.25rem;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition), border-color var(--transition);
+    }
+
+    .btn-primary {
+      background: var(--gold);
+      color: #0e0e10;
+      border-color: var(--gold);
+    }
+    .btn-primary:hover { background: #d4b06a; border-color: #d4b06a; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-mid);
+      border-color: var(--border);
+    }
+    .btn-ghost:hover { color: var(--text); border-color: #4a4a50; }
+
+    /* ── Form elements ──────────────────────────────────────────────────── */
+    .form-label {
+      display: block;
+      font-size: .7rem;
+      font-weight: 500;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: .4rem;
+    }
+
+    .form-control, .form-select {
+      width: 100%;
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: .875rem;
+      font-weight: 300;
+      padding: .55rem .9rem;
+      transition: border-color var(--transition);
+      appearance: none;
+      outline: none;
+    }
+
+    .form-control::placeholder { color: var(--text-dim); }
+    .form-control:focus, .form-select:focus { border-color: var(--gold-dim); }
+
+    .form-select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a7870' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right .9rem center;
+      padding-right: 2.2rem;
+    }
+
+    /* ── Grid helpers ───────────────────────────────────────────────────── */
+    .grid { display: grid; gap: 1.5rem; }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+    @media (max-width: 1100px) { .grid-4 { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 800px)  { .grid-4 { grid-template-columns: repeat(2, 1fr); } .grid-3 { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px)  { .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; } }
+
+    /* ── Utilities ──────────────────────────────────────────────────────── */
+    .flex { display: flex; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .gap-2 { gap: .5rem; }
+    .gap-4 { gap: 1rem; }
+    .mb-1 { margin-bottom: .25rem; }
+    .mb-2 { margin-bottom: .5rem; }
+    .mb-4 { margin-bottom: 1rem; }
+    .mb-6 { margin-bottom: 1.5rem; }
+    .mb-8 { margin-bottom: 2rem; }
+    .mb-12 { margin-bottom: 3rem; }
+    .mt-2 { margin-top: .5rem; }
+    .mt-4 { margin-top: 1rem; }
+    .mt-8 { margin-top: 2rem; }
+
+    {% block extra_styles %}{% endblock %}
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <a href="/actresses/" class="navbar-brand">Actress<span>DB</span></a>
+  <div class="navbar-links">
+    <a href="/actresses/">Collection</a>
+    <a href="/import/">Import</a>
+    <a href="/import/review/">Review</a>
+    <a href="/rescrape/">Rescrape</a>
+    <a href="/admin/">Admin</a>
+  </div>
+</nav>
+
+<!-- Global task notification bar — shows when background tasks are running -->
+<div id="globalTaskBar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:500;
+     background:var(--bg-2);border-top:1px solid var(--border);padding:.6rem 1.5rem;
+     display:none;align-items:center;gap:1rem;">
+  <div style="flex:1;min-width:0;">
+    <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:.3rem;">
+      <span id="gtbLabel" style="color:var(--text-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%;"></span>
+      <span id="gtbPct" style="color:var(--text-dim);flex-shrink:0;"></span>
+    </div>
+    <div style="background:var(--bg-3);border-radius:999px;height:4px;overflow:hidden;">
+      <div id="gtbFill" style="height:100%;background:var(--gold);border-radius:999px;width:0%;transition:width 600ms ease;"></div>
+    </div>
+  </div>
+  <button onclick="dismissTaskBar()" style="background:none;border:none;color:var(--text-dim);
+    font-size:1.1rem;cursor:pointer;flex-shrink:0;padding:.2rem .4rem;">✕</button>
+</div>
+
+<!-- Content -->
+<main class="page">
+  {% block content %}{% endblock %}
+</main>
+
+<script>
+// Global task polling — shows the bottom bar for any running task
+let _gtbDismissed = false;
+let _gtbTaskId    = null;
+
+async function checkActiveTasks() {
+  try {
+    const r    = await fetch('/tasks/active/');
+    const data = await r.json();
+    if (data.tasks.length && !_gtbDismissed) {
+      const t = data.tasks[0];
+      _gtbTaskId = t.id;
+      showTaskBar(t);
+      setTimeout(checkActiveTasks, 3000);
+    } else {
+      hideTaskBar();
+    }
+  } catch { /* ignore */ }
+}
+
+function showTaskBar(t) {
+  const bar = document.getElementById('globalTaskBar');
+  bar.style.display = 'flex';
+  document.getElementById('gtbLabel').textContent = t.message || t.label || 'Running…';
+  document.getElementById('gtbPct').textContent   = t.pct + '%';
+  document.getElementById('gtbFill').style.width  = t.pct + '%';
+}
+
+function hideTaskBar() {
+  document.getElementById('globalTaskBar').style.display = 'none';
+}
+
+function dismissTaskBar() {
+  _gtbDismissed = true;
+  hideTaskBar();
+}
+
+// Start polling on every page load
+setTimeout(checkActiveTasks, 1500);
+</script>
+
+</body>
+</html>
